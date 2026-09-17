@@ -38,6 +38,10 @@ export default function LovedTracksTable({
 
   const displayedTracks = limit > 0 ? tracks.slice(0, limit) : tracks;
 
+  if (displayedTracks.length === 0) {
+    return null;
+  }
+
   return (
     <section className="space-y-3">
       <div>

@@ -87,7 +87,7 @@ export default function NowPlayingSidebar({
   return (
     <aside className="w-88 flex-shrink-0 bg-[#13101A] border-l border-[#271E38] flex flex-col justify-between h-full overflow-hidden select-none">
       {/* Scrollable Container */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-5">
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
         {/* Track Card */}
         {currentTrack ? (
           <div className="space-y-3.5 pb-4 border-b border-[#271E38]">
@@ -184,7 +184,7 @@ export default function NowPlayingSidebar({
             </span>
           </div>
 
-          <div className="rounded-2xl bg-[#1D1728] border border-[#2E1F40] p-4 max-h-64 overflow-y-auto scrollbar-thin">
+          <div className="rounded-2xl bg-[#1D1728] border border-[#2E1F40] p-4 max-h-64 overflow-y-auto custom-scrollbar">
             {currentTrack?.lyrics
               ? renderLyrics(currentTrack.lyrics)
               : (

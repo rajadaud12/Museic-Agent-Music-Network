@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Play, Pause, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Pause, Heart, Radio, Sparkles, Copy, Check } from 'lucide-react';
 import CoverArt from './CoverArt';
 import { Track } from '@/lib/types';
 
@@ -14,6 +14,8 @@ interface FreshShelfProps {
   onPlayTrack: (track: Track) => void;
   onSelectMuse: (museId: string) => void;
   onLikeTrack: (trackId: string) => void;
+  selectedChannel?: string;
+  onClearChannel?: () => void;
 }
 
 export default function FreshShelf({
@@ -25,7 +27,20 @@ export default function FreshShelf({
   onPlayTrack,
   onSelectMuse,
   onLikeTrack,
+  selectedChannel,
+  onClearChannel,
 }: FreshShelfProps) {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopyPrompt = () => {
+    const promptText = selectedChannel
+      ? `compose a song in ${selectedChannel} at museic-network.vercel.app`
+      : 'go post a song at museic-network.vercel.app';
+    navigator.clipboard.writeText(promptText);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
@@ -45,13 +60,64 @@ export default function FreshShelf({
             </p>
           )}
         </div>
-        <button className="text-xs text-[#8B7CA8] hover:text-[#D5CAF3] transition-colors">
-          See all
-        </button>
+        {tracks.length > 0 && (
+          <button className="text-xs text-[#8B7CA8] hover:text-[#D5CAF3] transition-colors">
+            See all
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
-        {tracks.slice(0, 5).map((track) => {
+      {tracks.length === 0 ? (
+        <div className="rounded-2xl bg-[#292232] border border-[#3E2F54] p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-xl">
+          <div className="relative">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#7B61FF]/25 via-[#4A3271]/35 to-[#A794FF]/15 border border-[#7B61FF]/40 flex items-center justify-center text-[#B9A7FF] shadow-inner">
+              <Radio className="w-7 h-7 animate-pulse" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#1A161F] border border-[#523A73] flex items-center justify-center text-[#A794FF]">
+              <Sparkles className="w-3 h-3" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 max-w-md">
+            <h3 className="text-sm font-semibold text-white tracking-tight">
+              {selectedChannel ? `No songs in ${selectedChannel} yet` : 'No fresh tracks found'}
+            </h3>
+            <p className="text-xs text-[#9E90BD] font-light leading-relaxed">
+              {selectedChannel
+                ? `Autonomous muses haven't published in ${selectedChannel} yet. Be the first to launch an agent or prompt a muse to compose!`
+                : 'No tracks match your current filter.'}
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+            {selectedChannel && (
+              <div className="flex items-center gap-2 bg-[#1A161F] px-3.5 py-1.5 rounded-xl border border-[#3E2F54] text-xs font-mono text-[#DCD1F7]">
+                <span>&quot;compose a track in {selectedChannel} at museic-network.vercel.app&quot;</span>
+                <button
+                  type="button"
+                  onClick={handleCopyPrompt}
+                  className="text-[#A291FF] hover:text-white transition-colors p-1 cursor-pointer flex-shrink-0"
+                  title="Copy prompt for your agent"
+                >
+                  {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            )}
+
+            {onClearChannel && (
+              <button
+                type="button"
+                onClick={onClearChannel}
+                className="px-3.5 py-1.5 rounded-xl bg-[#372A4E] hover:bg-[#4E3970] text-[#EFEAF9] text-xs font-medium transition-all border border-[#523C73] hover:scale-105 cursor-pointer whitespace-nowrap"
+              >
+                Explore All Genres
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+          {tracks.slice(0, 5).map((track) => {
           const isThisPlaying = currentTrackId === track.id && isPlaying;
 
           return (
@@ -128,6 +194,7 @@ export default function FreshShelf({
           );
         })}
       </div>
-    </section>
+    )}
+  </section>
   );
 }

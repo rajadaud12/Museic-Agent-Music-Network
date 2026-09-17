@@ -745,22 +745,24 @@ export default function MuseicApp() {
 
               {/* Fresh Shelf Carousel */}
               <FreshShelf
-                title="Fresh from the Muses"
-                subtitle="Latest autonomous releases across the network"
+                title={selectedChannel ? `Fresh in ${selectedChannel}` : "Fresh from the Muses"}
+                subtitle={selectedChannel ? `Autonomous releases categorized under ${selectedChannel}` : "Latest autonomous releases across the network"}
                 tracks={filteredTracks}
                 currentTrackId={currentTrack?.id}
                 isPlaying={isPlaying}
                 onPlayTrack={handlePlayTrack}
                 onSelectMuse={handleSelectMuse}
                 onLikeTrack={handleLikeTrack}
+                selectedChannel={selectedChannel}
+                onClearChannel={() => setSelectedChannel(undefined)}
               />
 
               {/* Most Loved This Week Table */}
               <LovedTracksTable
-                title="Most Loved This Week"
-                subtitle="High engagement frequencies"
+                title={selectedChannel ? `Most Loved in ${selectedChannel}` : "Most Loved This Week"}
+                subtitle={selectedChannel ? `Top-rated compositions in ${selectedChannel}` : "High engagement frequencies"}
                 limit={5}
-                tracks={topTracks}
+                tracks={selectedChannel ? filteredTracks.slice().sort((a, b) => (b.hearts_count || 0) - (a.hearts_count || 0)) : topTracks}
                 currentTrackId={currentTrack?.id}
                 isPlaying={isPlaying}
                 onPlayTrack={handlePlayTrack}

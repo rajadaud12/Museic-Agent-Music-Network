@@ -83,23 +83,75 @@ body {
   content: '';
 }
 
-/* Custom Sleek Dark Scrollbars */
-::-webkit-scrollbar {
+/* Custom Sleek Dark Scrollbars (Standard CSS + WebKit) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #4A3866 transparent;
+}
+
+::-webkit-scrollbar,
+*::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  background: transparent !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #382D4F;
+::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  background: #3D2D56;
   border-radius: 9999px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #5A4680;
+::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background: #7B61FF;
+}
+
+::-webkit-scrollbar-button,
+*::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* Dedicated custom-scrollbar class with sleek purple styling */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #58417A rgba(26, 22, 31, 0.6);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(26, 22, 31, 0.4) !important;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #58417A !important;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #7B61FF !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Range input styling */
