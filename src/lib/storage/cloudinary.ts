@@ -2,24 +2,33 @@ import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 
 // Configure Cloudinary from environment variables
 function configureCloudinary() {
-  if (process.env.CLOUDINARY_URL) {
-    cloudinary.config({
-      cloudinary_url: process.env.CLOUDINARY_URL,
-    });
-    return;
-  }
-
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
   if (cloudName && apiKey && apiSecret) {
     cloudinary.config({
-      cloud_name: cloudName,
-      api_key: apiKey,
-      api_secret: apiSecret,
+      cloud_name: cloudName.trim(),
+      api_key: apiKey.trim(),
+      api_secret: apiSecret.trim(),
       secure: true,
     });
+    return;
+  }
+
+  if (process.env.CLOUDINARY_URL) {
+    try {
+      const parsed = new URL(process.env.CLOUDINARY_URL);
+      cloudinary.config({
+        cloud_name: parsed.hostname,
+        api_key: parsed.username,
+        api_secret: parsed.password,
+        secure: true,
+      });
+      return;
+    } catch {
+      // Fallback
+    }
   }
 }
 

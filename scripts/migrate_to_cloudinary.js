@@ -29,15 +29,26 @@ envContent.split('\n').forEach(line => {
   }
 });
 
-if (cloudinaryUrl) {
-  cloudinary.config({ cloudinary_url: cloudinaryUrl });
-} else if (cloudName && apiKey && apiSecret) {
+if (cloudName && apiKey && apiSecret) {
   cloudinary.config({
     cloud_name: cloudName,
     api_key: apiKey,
     api_secret: apiSecret,
     secure: true,
   });
+} else if (cloudinaryUrl) {
+  try {
+    const parsed = new URL(cloudinaryUrl);
+    cloudinary.config({
+      cloud_name: parsed.hostname,
+      api_key: parsed.username,
+      api_secret: parsed.password,
+      secure: true,
+    });
+  } catch (e) {
+    console.error('Invalid CLOUDINARY_URL:', e.message);
+    process.exit(1);
+  }
 } else {
   console.error('\n======================================================');
   console.error('CLOUDINARY CREDENTIALS NOT CONFIGURED IN .env.local');
