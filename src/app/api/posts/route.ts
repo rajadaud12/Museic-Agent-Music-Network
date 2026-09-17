@@ -3,6 +3,7 @@ import { createTrack, getMuseById, getTrackById, getTrackCountByMuse, updateTrac
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { processTrackCoverImage } from '@/lib/agent/avatar';
 import { generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
+import { isCloudinaryConfigured, uploadAudioToCloudinary } from '@/lib/storage/cloudinary';
 import { Track } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
@@ -85,7 +86,17 @@ export async function POST(req: NextRequest) {
       audio_url = genResult.audio_url;
     }
 
-    // Optional music track picture/cover art upload (processed & compressed via sharp WebP)
+    // If audio_url is base64 data URI, upload to Cloudinary if available
+    if (audio_url && audio_url.startsWith('data:audio/') && isCloudinaryConfigured()) {
+      try {
+        const uploadRes = await uploadAudioToCloudinary(audio_url, 'tracks');
+        audio_url = uploadRes.url;
+      } catch (uploadErr) {
+        console.warn('Cloudinary upload failed for track audio, keeping base64 fallback:', uploadErr);
+      }
+    }
+
+    // Optional music track picture/cover art upload (processed via sharp & Cloudinary)
     const rawPic = body.pic || body.cover_pic || body.cover_image || body.cover_url || body.image || body.cover;
     let processedCover: string | undefined = undefined;
     if (rawPic && typeof rawPic === 'string') {

@@ -74,6 +74,8 @@ export function generateProceduralWavAudio(durationSeconds: number = 30, style?:
   return 'data:audio/wav;base64,' + buffer.toString('base64');
 }
 
+import { isCloudinaryConfigured, uploadAudioToCloudinary } from '@/lib/storage/cloudinary';
+
 export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): Promise<MusicGenerationResult> {
   const apiKey = process.env.ELEVENLABS_API_KEY;
 
@@ -111,9 +113,20 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
 
       if (musicRes.ok) {
         const audioBuffer = await musicRes.arrayBuffer();
-        const base64Audio = Buffer.from(audioBuffer).toString('base64');
+        const buf = Buffer.from(audioBuffer);
+        let audioUrl = `data:audio/mp3;base64,${buf.toString('base64')}`;
+
+        if (isCloudinaryConfigured()) {
+          try {
+            const uploadRes = await uploadAudioToCloudinary(buf, 'tracks');
+            audioUrl = uploadRes.url;
+          } catch (uploadErr) {
+            console.warn('Cloudinary audio upload failed, falling back to base64 MP3:', uploadErr);
+          }
+        }
+
         return {
-          audio_url: `data:audio/mp3;base64,${base64Audio}`,
+          audio_url: audioUrl,
           duration: cappedSeconds,
           is_live_api: true,
           provider: 'elevenlabs_music'
@@ -122,8 +135,19 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
         const errJson = await musicRes.json().catch(() => ({}));
         console.warn('ElevenLabs Music API returned status', musicRes.status, errJson);
         const fallbackWav = generateProceduralWavAudio(cappedSeconds, req.style);
+        let audioUrl = fallbackWav;
+
+        if (isCloudinaryConfigured()) {
+          try {
+            const uploadRes = await uploadAudioToCloudinary(fallbackWav, 'tracks');
+            audioUrl = uploadRes.url;
+          } catch (uploadErr) {
+            console.warn('Cloudinary audio upload failed for fallback WAV:', uploadErr);
+          }
+        }
+
         return {
-          audio_url: fallbackWav,
+          audio_url: audioUrl,
           duration: cappedSeconds,
           is_live_api: false,
           provider: 'synth_fallback',
@@ -138,8 +162,19 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
   const fallbackDuration = Math.min(120, Math.max(10, req.duration_seconds || 60));
   // Reliable procedural audio fallback with real playable WAV data
   const fallbackWav = generateProceduralWavAudio(fallbackDuration, req.style);
+  let finalAudioUrl = fallbackWav;
+
+  if (isCloudinaryConfigured()) {
+    try {
+      const uploadRes = await uploadAudioToCloudinary(fallbackWav, 'tracks');
+      finalAudioUrl = uploadRes.url;
+    } catch (uploadErr) {
+      console.warn('Cloudinary audio upload failed for fallback WAV:', uploadErr);
+    }
+  }
+
   return {
-    audio_url: fallbackWav,
+    audio_url: finalAudioUrl,
     duration: fallbackDuration,
     is_live_api: false,
     provider: 'synth_fallback'

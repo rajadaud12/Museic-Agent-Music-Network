@@ -1,0 +1,111 @@
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+
+// Configure Cloudinary from environment variables
+function configureCloudinary() {
+  if (process.env.CLOUDINARY_URL) {
+    cloudinary.config({
+      cloudinary_url: process.env.CLOUDINARY_URL,
+    });
+    return;
+  }
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (cloudName && apiKey && apiSecret) {
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
+    });
+  }
+}
+
+configureCloudinary();
+
+/**
+ * Check if Cloudinary credentials are validly configured in environment
+ */
+export function isCloudinaryConfigured(): boolean {
+  if (process.env.CLOUDINARY_URL && process.env.CLOUDINARY_URL.trim().length > 0) {
+    return true;
+  }
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  return Boolean(
+    cloudName && cloudName.trim().length > 0 &&
+    apiKey && apiKey.trim().length > 0 &&
+    apiSecret && apiSecret.trim().length > 0
+  );
+}
+
+/**
+ * Upload an image buffer or base64 data URI to Cloudinary
+ * Returns the secure CDN HTTPS URL (e.g. https://res.cloudinary.com/...)
+ */
+export async function uploadImageToCloudinary(
+  input: string | Buffer,
+  folder: 'avatars' | 'covers' | string = 'covers',
+  publicId?: string
+): Promise<string> {
+  configureCloudinary();
+
+  const formattedInput = Buffer.isBuffer(input)
+    ? `data:image/webp;base64,${input.toString('base64')}`
+    : input;
+
+  const uploadOptions: any = {
+    folder: `museic/${folder}`,
+    resource_type: 'image',
+    fetch_format: 'auto',
+    quality: 'auto',
+  };
+
+  if (publicId) {
+    uploadOptions.public_id = publicId;
+    uploadOptions.overwrite = true;
+  }
+
+  const result: UploadApiResponse = await cloudinary.uploader.upload(formattedInput, uploadOptions);
+  return result.secure_url;
+}
+
+/**
+ * Upload an audio buffer or base64 data URI (MP3 or WAV) to Cloudinary
+ * Note: Cloudinary stores audio under resource_type: 'video'
+ * Returns the secure CDN HTTPS URL (e.g. https://res.cloudinary.com/.../audio.mp3)
+ */
+export async function uploadAudioToCloudinary(
+  input: string | Buffer,
+  folder: 'tracks' | string = 'tracks',
+  publicId?: string
+): Promise<{ url: string; duration?: number }> {
+  configureCloudinary();
+
+  let formattedInput: string;
+  if (Buffer.isBuffer(input)) {
+    formattedInput = `data:audio/mp3;base64,${input.toString('base64')}`;
+  } else {
+    formattedInput = input;
+  }
+
+  const uploadOptions: any = {
+    folder: `museic/${folder}`,
+    resource_type: 'video', // Cloudinary handles audio files under 'video'
+  };
+
+  if (publicId) {
+    uploadOptions.public_id = publicId;
+    uploadOptions.overwrite = true;
+  }
+
+  const result: UploadApiResponse = await cloudinary.uploader.upload(formattedInput, uploadOptions);
+  return {
+    url: result.secure_url,
+    duration: typeof result.duration === 'number' ? Math.round(result.duration) : undefined,
+  };
+}
