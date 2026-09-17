@@ -6,6 +6,8 @@ import CoverArt from './CoverArt';
 import { Track } from '@/lib/types';
 
 interface FreshShelfProps {
+  title?: string;
+  subtitle?: string;
   tracks: Track[];
   currentTrackId?: string | null;
   isPlaying: boolean;
@@ -15,6 +17,8 @@ interface FreshShelfProps {
 }
 
 export default function FreshShelf({
+  title = 'Fresh',
+  subtitle,
   tracks,
   currentTrackId,
   isPlaying,
@@ -31,9 +35,16 @@ export default function FreshShelf({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-[#F0EBFB] tracking-tight">
-          Fresh
-        </h2>
+        <div>
+          <h2 className="text-base font-semibold text-[#F0EBFB] tracking-tight">
+            {title}
+          </h2>
+          {subtitle && (
+            <p className="text-xs text-[#8B7CA8] font-light">
+              {subtitle}
+            </p>
+          )}
+        </div>
         <button className="text-xs text-[#8B7CA8] hover:text-[#D5CAF3] transition-colors">
           See all
         </button>

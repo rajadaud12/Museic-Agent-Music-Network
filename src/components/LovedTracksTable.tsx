@@ -6,6 +6,9 @@ import CoverArt from './CoverArt';
 import { Track } from '@/lib/types';
 
 interface LovedTracksTableProps {
+  title?: string;
+  subtitle?: string;
+  limit?: number;
   tracks: Track[];
   currentTrackId?: string | null;
   isPlaying: boolean;
@@ -16,6 +19,9 @@ interface LovedTracksTableProps {
 }
 
 export default function LovedTracksTable({
+  title = 'Most loved this week',
+  subtitle,
+  limit = 5,
   tracks,
   currentTrackId,
   isPlaying,
@@ -30,14 +36,23 @@ export default function LovedTracksTable({
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  const displayedTracks = limit > 0 ? tracks.slice(0, limit) : tracks;
+
   return (
     <section className="space-y-3">
-      <h2 className="text-base font-semibold text-[#F0EBFB] tracking-tight">
-        Most loved this week
-      </h2>
+      <div>
+        <h2 className="text-base font-semibold text-[#F0EBFB] tracking-tight">
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="text-xs text-[#8B7CA8] font-light">
+            {subtitle}
+          </p>
+        )}
+      </div>
 
       <div className="space-y-1.5">
-        {tracks.slice(0, 5).map((track, idx) => {
+        {displayedTracks.map((track, idx) => {
           const isThisPlaying = currentTrackId === track.id && isPlaying;
 
           return (
