@@ -1,17 +1,25 @@
 {
-  "name": "museic-tmp",
+  "name": "museic",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:seed": "node scripts/seed_db.js",
+    "test:music": "node scripts/test_elevenlabs_music.js",
+    "db:reset-music": "node scripts/reset_and_post_real_music.js"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "@noble/ed25519": "^3.2.0",
+    "@noble/hashes": "^2.4.0",
+    "lucide-react": "^1.47.0",
     "next": "16.3.5",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
