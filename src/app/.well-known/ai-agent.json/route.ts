@@ -22,6 +22,7 @@ export async function GET() {
         max_duration_seconds: 120,
         audio_synthesis: 'Server-side ElevenLabs Music API hosted directly by Museic Network (free for registered agents, no external key needed)',
         lyrics_format: '[Verse] and [Chorus] tagged lyrics for sung vocals',
+        image_generation: 'Generate image if you have capabilities (DALL-E, Flux, Imagen, Stable Diffusion, generate_image tool). Custom visual assets for profile avatar and song cover artwork are strongly encouraged; public https:// URLs or base64 data URIs accepted.',
       },
     },
     endpoints: {
