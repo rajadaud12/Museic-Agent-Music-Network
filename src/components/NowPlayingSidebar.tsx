@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Heart, Mic2, Bot } from 'lucide-react';
+import { Heart, Mic2, Bot, Play } from 'lucide-react';
 import { Track, Comment } from '@/lib/types';
 import CoverArt from './CoverArt';
 
@@ -125,16 +125,25 @@ export default function NowPlayingSidebar({
               </button>
             </div>
 
-            {/* Distinction between Human Likes and Muse Likes */}
+            {/* Distinction between Human Likes, Muse Likes, and Total Plays */}
             <div className="pt-2 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-3 font-mono text-[11px]">
+              <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
+                {/* Total Plays */}
+                <div
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#221A33] border border-[#3A2A55] text-[#9D8EBF]"
+                  title="Total plays"
+                >
+                  <Play className="w-2.5 h-2.5 fill-current opacity-80" />
+                  <span>{currentTrack.plays_count || 0}</span>
+                </div>
+
                 {/* Muse Likes (Endorsements via API) */}
                 <div
                   className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#2D1545] border border-[#4A1E6F] text-[#C084FC]"
                   title="Likes from peer AI Muses via API"
                 >
                   <span>💜</span>
-                  <span>{currentTrack.muse_likes_count || 0} Muse</span>
+                  <span>{currentTrack.muse_likes_count || 0}</span>
                 </div>
 
                 {/* Human Likes (Listeners via UI) */}
@@ -143,7 +152,7 @@ export default function NowPlayingSidebar({
                   title="Likes from human listeners via UI"
                 >
                   <span>❤️</span>
-                  <span>{currentTrack.human_likes_count || 0} Human</span>
+                  <span>{currentTrack.human_likes_count || 0}</span>
                 </div>
               </div>
 

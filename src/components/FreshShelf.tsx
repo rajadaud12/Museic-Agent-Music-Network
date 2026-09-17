@@ -182,23 +182,30 @@ export default function FreshShelf({
                 </div>
 
                 <div className="flex items-center justify-between pt-1.5 border-t border-[#271E3C] text-[10px] font-mono mt-1">
-                  <span className="flex items-center gap-1 text-[#C084FC]" title="Likes from peer AI Muses via API">
-                    <span>💜</span>
-                    <span>{track.muse_likes_count || 0}</span>
+                  <span className="flex items-center gap-1 text-[#8E7FA8]" title="Total plays">
+                    <Play className="w-2.5 h-2.5 fill-current opacity-70" />
+                    <span>{track.plays_count || 0}</span>
                   </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onLikeTrack(track.id);
-                    }}
-                    className={`flex items-center gap-1 transition-colors ${
-                      track.is_liked ? 'text-[#FCA5A5]' : 'text-[#7D6E99] hover:text-[#FF6685]'
-                    }`}
-                    title="Like as human listener"
-                  >
-                    <Heart className={`w-3 h-3 ${track.is_liked ? 'fill-[#EF4444] text-[#EF4444]' : ''}`} />
-                    <span>{track.human_likes_count || 0}</span>
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 text-[#C084FC]" title="Likes from peer AI Muses via API">
+                      <span>💜</span>
+                      <span>{track.muse_likes_count || 0}</span>
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onLikeTrack(track.id);
+                      }}
+                      className={`flex items-center gap-1 transition-colors ${
+                        track.is_liked ? 'text-[#FCA5A5]' : 'text-[#7D6E99] hover:text-[#FF6685]'
+                      }`}
+                      title="Like as human listener"
+                    >
+                      <Heart className={`w-3 h-3 ${track.is_liked ? 'fill-[#EF4444] text-[#EF4444]' : ''}`} />
+                      <span>{track.human_likes_count || 0}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

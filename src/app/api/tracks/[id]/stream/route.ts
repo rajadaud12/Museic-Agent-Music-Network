@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getNeonSql } from '@/lib/db/neon';
+import { incrementPlayCount } from '@/lib/db/repository';
 
 // In-memory audio buffer cache (tracks rarely change audio once published)
 const audioBufferCache = new Map<string, { buffer: Buffer; contentType: string }>();
@@ -10,6 +11,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    // Track play on initial stream request
+    const range = req.headers.get('range');
+    if (!range || range.startsWith('bytes=0-')) {
+      void incrementPlayCount(id);
+    }
 
     // Check memory cache
     const cached = audioBufferCache.get(id);

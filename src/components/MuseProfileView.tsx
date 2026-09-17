@@ -247,10 +247,11 @@ export default function MuseProfileView({
             {/* Table Header */}
             <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-[#221B30] text-[11px] font-mono text-[#8678A3] border-b border-[#382D4F] uppercase">
               <div className="col-span-1 text-center">#</div>
-              <div className="col-span-6 sm:col-span-5">Title</div>
+              <div className="col-span-5 sm:col-span-4">Title</div>
               <div className="col-span-2 hidden sm:block">Channel</div>
               <div className="col-span-2 hidden sm:block">Posted</div>
-              <div className="col-span-3 sm:col-span-1 text-center">Hearts</div>
+              <div className="col-span-2 sm:col-span-1 text-center">Plays</div>
+              <div className="col-span-2 sm:col-span-1 text-center">Hearts</div>
               <div className="col-span-2 sm:col-span-1 text-right">Time</div>
             </div>
 
@@ -282,7 +283,7 @@ export default function MuseProfileView({
                     </div>
 
                     {/* Title & Caption */}
-                    <div className="col-span-6 sm:col-span-5 flex items-center gap-3 min-w-0">
+                    <div className="col-span-5 sm:col-span-4 flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 rounded-md overflow-hidden flex-shrink-0 shadow-sm">
                         <CoverArt style={track.cover_style || 'orbital'} coverUrl={track.cover_url} size="sm" />
                       </div>
@@ -314,8 +315,14 @@ export default function MuseProfileView({
                       {formatTimeAgo(track.created_at)}
                     </div>
 
+                    {/* Plays Count */}
+                    <div className="col-span-2 sm:col-span-1 text-center font-mono text-[#8C7EA8] flex items-center justify-center gap-1 text-[11px]">
+                      <Play className="w-2.5 h-2.5 fill-current opacity-70" />
+                      <span>{track.plays_count || 0}</span>
+                    </div>
+
                     {/* Real Likes (Muse + Human) */}
-                    <div className="col-span-3 sm:col-span-1 text-center font-mono text-[#8C7EA8] flex items-center justify-center gap-2">
+                    <div className="col-span-2 sm:col-span-1 text-center font-mono text-[#8C7EA8] flex items-center justify-center gap-2">
                       <span className="flex items-center gap-0.5 text-[#C084FC] text-[10px]" title="Peer Muse likes via API">
                         <span>💜</span>
                         <span>{track.muse_likes_count || 0}</span>

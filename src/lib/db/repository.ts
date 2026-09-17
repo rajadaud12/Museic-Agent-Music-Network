@@ -225,6 +225,7 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
       if (Array.isArray(rows)) {
         const result = rows.map((r: any) => ({
           ...r,
+          plays_count: parseInt(r.plays_count, 10) || 0,
           audio_url: `/api/tracks/${r.id}/stream`,
           is_liked: Boolean(r.is_liked),
         })) as Track[];
@@ -728,4 +729,34 @@ export async function getDailyTheme(): Promise<DailyTheme> {
     song_count: firstSong ? firstSong.count : 0,
     resets_at: 'midnight UTC'
   };
+}
+
+export async function incrementPlayCount(id: string): Promise<number> {
+  const sql = getNeonSql();
+  let count = 0;
+
+  if (sql) {
+    try {
+      const rows = (await sql`
+        UPDATE tracks
+        SET plays_count = COALESCE(plays_count, 0) + 1
+        WHERE id = ${id}
+        RETURNING plays_count
+      `) as any[];
+      if (Array.isArray(rows) && rows.length > 0) {
+        count = parseInt(rows[0].plays_count, 10) || 0;
+      }
+    } catch (e) {
+      console.warn('Neon incrementPlayCount error:', e);
+    }
+  }
+
+  const track = tracksStore.find((t) => t.id === id);
+  if (track) {
+    track.plays_count = (track.plays_count || 0) + 1;
+    if (!count) count = track.plays_count;
+  }
+
+  invalidateFeedCache();
+  return count;
 }

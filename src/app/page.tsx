@@ -62,6 +62,8 @@ export default function MuseicApp() {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(160);
   const [trackComments, setTrackComments] = useState<Comment[]>([]);
+  const [isShuffle, setIsShuffle] = useState<boolean>(false);
+  const [isRepeat, setIsRepeat] = useState<boolean>(false);
 
   const loadData = async () => {
     try {
@@ -98,6 +100,52 @@ export default function MuseicApp() {
   tracksRef.current = tracks;
   const currentTrackRef = React.useRef(currentTrack);
   currentTrackRef.current = currentTrack;
+  const isShuffleRef = React.useRef(isShuffle);
+  isShuffleRef.current = isShuffle;
+  const isRepeatRef = React.useRef(isRepeat);
+  isRepeatRef.current = isRepeat;
+
+  const recordTrackPlay = async (trackId: string) => {
+    // Optimistic UI updates
+    setTracks((prev) =>
+      prev.map((t) => (t.id === trackId ? { ...t, plays_count: (t.plays_count || 0) + 1 } : t))
+    );
+    setProfileTracks((prev) =>
+      prev.map((t) => (t.id === trackId ? { ...t, plays_count: (t.plays_count || 0) + 1 } : t))
+    );
+    setCurrentTrack((prev) =>
+      prev && prev.id === trackId ? { ...prev, plays_count: (prev.plays_count || 0) + 1 } : prev
+    );
+
+    try {
+      const res = await fetch(`/api/tracks/${trackId}/play`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.plays_count === 'number') {
+          setTracks((prev) =>
+            prev.map((t) => (t.id === trackId ? { ...t, plays_count: data.plays_count } : t))
+          );
+          setProfileTracks((prev) =>
+            prev.map((t) => (t.id === trackId ? { ...t, plays_count: data.plays_count } : t))
+          );
+          setCurrentTrack((prev) =>
+            prev && prev.id === trackId ? { ...prev, plays_count: data.plays_count } : prev
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to record track play:', e);
+    }
+  };
+
+  const playTrackInternal = (track: Track) => {
+    setCurrentTrack(track);
+    setDuration(track.duration);
+    setCurrentTime(0);
+    setIsPlaying(true);
+    synthEngine.play(track.id, track.audio_url, track.audio_style || track.cover_style, track.duration);
+    recordTrackPlay(track.id);
+  };
 
   // Bind Synth Engine Callbacks (mount once on client, never abort on track switch)
   useEffect(() => {
@@ -110,15 +158,32 @@ export default function MuseicApp() {
       const currentList = tracksRef.current;
       const active = currentTrackRef.current;
       if (currentList.length === 0) return;
+
+      // 1. Loop / Repeat: replay the active track
+      if (isRepeatRef.current && active) {
+        setCurrentTime(0);
+        synthEngine.seek(0);
+        synthEngine.play(active.id, active.audio_url, active.audio_style || active.cover_style, active.duration);
+        recordTrackPlay(active.id);
+        return;
+      }
+
+      // 2. Shuffle: pick random track (different from active if list > 1)
+      if (isShuffleRef.current && currentList.length > 1) {
+        const otherTracks = currentList.filter((t) => t.id !== active?.id);
+        const randomTrack = otherTracks[Math.floor(Math.random() * otherTracks.length)];
+        if (randomTrack) {
+          playTrackInternal(randomTrack);
+          return;
+        }
+      }
+
+      // 3. Sequential: next track
       const currentIndex = currentList.findIndex((t) => t.id === active?.id);
       const nextIndex = (currentIndex + 1) % currentList.length;
       const nextTrack = currentList[nextIndex];
       if (nextTrack) {
-        setCurrentTrack(nextTrack);
-        setDuration(nextTrack.duration);
-        setCurrentTime(0);
-        setIsPlaying(true);
-        synthEngine.play(nextTrack.id, nextTrack.audio_url, nextTrack.audio_style || nextTrack.cover_style, nextTrack.duration);
+        playTrackInternal(nextTrack);
       }
     };
 
@@ -174,12 +239,7 @@ export default function MuseicApp() {
       setIsPlaying(false);
       return;
     }
-
-    setCurrentTrack(track);
-    setDuration(track.duration);
-    setCurrentTime(0);
-    setIsPlaying(true);
-    synthEngine.play(track.id, track.audio_url, track.audio_style || track.cover_style, track.duration);
+    playTrackInternal(track);
   };
 
   const handlePlayPause = () => {
@@ -194,16 +254,38 @@ export default function MuseicApp() {
 
   const handleNextTrack = () => {
     if (tracks.length === 0) return;
+
+    if (isShuffle && tracks.length > 1) {
+      const otherTracks = tracks.filter((t) => t.id !== currentTrack?.id);
+      const randomTrack = otherTracks[Math.floor(Math.random() * otherTracks.length)];
+      if (randomTrack) {
+        playTrackInternal(randomTrack);
+        return;
+      }
+    }
+
     const currentIndex = tracks.findIndex((t) => t.id === currentTrack?.id);
     const nextIndex = (currentIndex + 1) % tracks.length;
-    handlePlayTrack(tracks[nextIndex]);
+    playTrackInternal(tracks[nextIndex]);
   };
 
   const handlePrevTrack = () => {
     if (tracks.length === 0) return;
+    if (currentTime > 3) {
+      handleSeek(0);
+      return;
+    }
+    if (isShuffle && tracks.length > 1) {
+      const otherTracks = tracks.filter((t) => t.id !== currentTrack?.id);
+      const randomTrack = otherTracks[Math.floor(Math.random() * otherTracks.length)];
+      if (randomTrack) {
+        playTrackInternal(randomTrack);
+        return;
+      }
+    }
     const currentIndex = tracks.findIndex((t) => t.id === currentTrack?.id);
     const prevIndex = (currentIndex - 1 + tracks.length) % tracks.length;
-    handlePlayTrack(tracks[prevIndex]);
+    playTrackInternal(tracks[prevIndex]);
   };
 
   const handleSeek = (seconds: number) => {
@@ -810,6 +892,10 @@ export default function MuseicApp() {
         onLike={handleLikeTrack}
         onVolumeChange={handleVolumeChange}
         onSelectMuse={handleSelectMuse}
+        isShuffle={isShuffle}
+        onToggleShuffle={() => setIsShuffle((prev) => !prev)}
+        isRepeat={isRepeat}
+        onToggleRepeat={() => setIsRepeat((prev) => !prev)}
       />
     </div>
   );

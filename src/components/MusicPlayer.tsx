@@ -27,6 +27,10 @@ interface MusicPlayerProps {
   onLike: (trackId: string) => void;
   onVolumeChange: (val: number) => void;
   onSelectMuse: (museId: string) => void;
+  isShuffle?: boolean;
+  onToggleShuffle?: () => void;
+  isRepeat?: boolean;
+  onToggleRepeat?: () => void;
 }
 
 export default function MusicPlayer({
@@ -41,11 +45,13 @@ export default function MusicPlayer({
   onLike,
   onVolumeChange,
   onSelectMuse,
+  isShuffle = false,
+  onToggleShuffle,
+  isRepeat = false,
+  onToggleRepeat,
 }: MusicPlayerProps) {
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
 
   if (!currentTrack) return null;
 
@@ -86,11 +92,17 @@ export default function MusicPlayer({
           <div className="text-xs font-semibold text-[#F1EBFB] truncate hover:text-[#A190FF] cursor-pointer">
             {currentTrack.title}
           </div>
-          <div
-            onClick={() => onSelectMuse(currentTrack.muse_id)}
-            className="text-[11px] text-[#8C7DA8] hover:text-[#D7CBFA] hover:underline cursor-pointer truncate"
-          >
-            {currentTrack.muse_name}
+          <div className="flex items-center gap-2 text-[11px] text-[#8C7DA8]">
+            <span
+              onClick={() => onSelectMuse(currentTrack.muse_id)}
+              className="hover:text-[#D7CBFA] hover:underline cursor-pointer truncate"
+            >
+              {currentTrack.muse_name}
+            </span>
+            <span className="text-[10px] font-mono text-[#74668D] flex items-center gap-0.5 flex-shrink-0" title="Total plays">
+              <Play className="w-2.5 h-2.5 fill-current opacity-70" />
+              <span>{currentTrack.plays_count || 0}</span>
+            </span>
           </div>
         </div>
 
@@ -111,18 +123,23 @@ export default function MusicPlayer({
       <div className="flex flex-col items-center gap-1.5 w-2/4 max-w-xl">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setIsShuffle(!isShuffle)}
-            className={`transition-colors ${
-              isShuffle ? 'text-[#8E76FF]' : 'text-[#7A6B97] hover:text-[#D5CAF7]'
+            onClick={onToggleShuffle}
+            className={`relative p-1.5 rounded-lg transition-all cursor-pointer ${
+              isShuffle
+                ? 'text-[#A291FF] bg-[#292232] shadow-sm shadow-[#7B61FF]/20'
+                : 'text-[#7A6B97] hover:text-[#D5CAF7]'
             }`}
-            title="Shuffle"
+            title={isShuffle ? 'Shuffle: ON (playing random tracks)' : 'Shuffle: OFF'}
           >
             <Shuffle className="w-3.5 h-3.5" />
+            {isShuffle && (
+              <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#A291FF]" />
+            )}
           </button>
 
           <button
             onClick={onPrev}
-            className="text-[#9E8FB9] hover:text-[#F0EAFB] transition-colors"
+            className="text-[#9E8FB9] hover:text-[#F0EAFB] transition-colors cursor-pointer"
             title="Previous track"
           >
             <SkipBack className="w-4 h-4" />
@@ -130,7 +147,7 @@ export default function MusicPlayer({
 
           <button
             onClick={onPlayPause}
-            className="w-8 h-8 rounded-full bg-[#EAE2FD] hover:bg-white text-[#150F23] flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95"
+            className="w-8 h-8 rounded-full bg-[#EAE2FD] hover:bg-white text-[#150F23] flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
@@ -142,20 +159,25 @@ export default function MusicPlayer({
 
           <button
             onClick={onNext}
-            className="text-[#9E8FB9] hover:text-[#F0EAFB] transition-colors"
+            className="text-[#9E8FB9] hover:text-[#F0EAFB] transition-colors cursor-pointer"
             title="Next track"
           >
             <SkipForward className="w-4 h-4" />
           </button>
 
           <button
-            onClick={() => setIsRepeat(!isRepeat)}
-            className={`transition-colors ${
-              isRepeat ? 'text-[#8E76FF]' : 'text-[#7A6B97] hover:text-[#D5CAF7]'
+            onClick={onToggleRepeat}
+            className={`relative p-1.5 rounded-lg transition-all cursor-pointer ${
+              isRepeat
+                ? 'text-[#A291FF] bg-[#292232] shadow-sm shadow-[#7B61FF]/20'
+                : 'text-[#7A6B97] hover:text-[#D5CAF7]'
             }`}
-            title="Repeat"
+            title={isRepeat ? 'Repeat: ON (looping current track)' : 'Repeat: OFF'}
           >
             <Repeat className="w-3.5 h-3.5" />
+            {isRepeat && (
+              <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#A291FF]" />
+            )}
           </button>
         </div>
 

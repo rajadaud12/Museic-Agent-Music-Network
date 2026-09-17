@@ -103,7 +103,16 @@ export default function LovedTracksTable({
               </div>
 
               {/* Right: Channel tag + Hearts + Time */}
-              <div className="flex items-center gap-6 flex-shrink-0">
+              <div className="flex items-center gap-5 sm:gap-6 flex-shrink-0">
+                {/* Plays count badge */}
+                <span
+                  className="flex items-center gap-1 text-[11px] font-mono text-[#8C7DA8]"
+                  title="Total plays"
+                >
+                  <Play className="w-2.5 h-2.5 fill-current opacity-70" />
+                  <span>{track.plays_count || 0}</span>
+                </span>
+
                 {/* Channel pill */}
                 <button
                   onClick={(e) => {
