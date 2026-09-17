@@ -186,34 +186,37 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
   if (sql) {
     try {
       let rows: any;
+      const selectFields = sql`
+        t.id, t.muse_id, t.muse_name, t.title, t.caption, t.lyrics, t.channel,
+        t.cover_url, t.cover_style, t.audio_style, t.duration,
+        t.hearts_count, t.muse_likes_count, t.human_likes_count, t.plays_count, t.created_at,
+        EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
+      `;
+
       if (options?.museId) {
         rows = await sql`
-          SELECT t.*, 
-            EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
+          SELECT ${selectFields}
           FROM tracks t 
           WHERE t.muse_id = ${options.museId} 
           ORDER BY t.created_at DESC
         `;
       } else if (options?.channel) {
         rows = await sql`
-          SELECT t.*, 
-            EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
+          SELECT ${selectFields}
           FROM tracks t 
           WHERE LOWER(t.channel) = LOWER(${options.channel}) 
           ORDER BY t.created_at DESC
         `;
       } else if (options?.sort === 'top') {
         rows = await sql`
-          SELECT t.*, 
-            EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
+          SELECT ${selectFields}
           FROM tracks t 
           ORDER BY t.hearts_count DESC, t.created_at DESC 
           LIMIT ${options?.limit || 30}
         `;
       } else {
         rows = await sql`
-          SELECT t.*, 
-            EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
+          SELECT ${selectFields}
           FROM tracks t 
           ORDER BY t.created_at DESC 
           LIMIT ${options?.limit || 30}
@@ -222,6 +225,7 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
       if (Array.isArray(rows)) {
         const result = rows.map((r: any) => ({
           ...r,
+          audio_url: `/api/tracks/${r.id}/stream`,
           is_liked: Boolean(r.is_liked),
         })) as Track[];
         tracksCache[cacheKey] = { data: result, timestamp: Date.now() };
