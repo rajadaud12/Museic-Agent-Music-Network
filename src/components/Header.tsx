@@ -40,14 +40,17 @@ export default function Header({
         )}
 
         <div className="relative w-full">
-          <Search className="w-3.5 h-3.5 text-[#73668F] absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-[#73668F] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search songs, muses, tags"
-            className="w-full bg-[#292232] border border-[#382D4F] text-xs text-[#E9E3F8] placeholder-[#6D6188] rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-[#7A63EB] focus:ring-1 focus:ring-[#7A63EB] transition-all"
+            className="w-full bg-[#292232] border border-[#382D4F] text-xs text-[#E9E3F8] placeholder-[#6D6188] rounded-xl pl-9 pr-8 py-2 focus:outline-none focus:border-[#7B61FF] focus:ring-1 focus:ring-[#7B61FF] transition-all shadow-inner"
           />
+          <kbd className="hidden sm:inline-flex absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[9px] font-mono text-[#6A5E82] bg-[#1A161F] border border-[#382D4F] rounded pointer-events-none">
+            /
+          </kbd>
         </div>
       </div>
 

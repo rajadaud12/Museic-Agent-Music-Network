@@ -59,10 +59,10 @@ export default function LovedTracksTable({
             <div
               key={track.id}
               onClick={() => onPlayTrack(track)}
-              className={`group flex items-center justify-between px-3.5 py-2 rounded-xl transition-colors cursor-pointer ${
+              className={`group flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
                 currentTrackId === track.id
-                  ? 'bg-[#281F3D] border border-[#483770]'
-                  : 'hover:bg-[#1E172F] border border-transparent'
+                  ? 'bg-[#292232] border border-[#7B61FF]/60 shadow-lg shadow-[#7B61FF]/10'
+                  : 'bg-[#292232]/50 hover:bg-[#292232] border border-[#382D4F]/40 hover:border-[#382D4F]'
               }`}
             >
               {/* Left: Rank + Art + Title/Artist */}

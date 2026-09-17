@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTracks, getChannels, getDailyTheme } from '@/lib/db/repository';
+import { getTracks, getChannels, getMusesWithTracks } from '@/lib/db/repository';
+import { DailyTheme } from '@/lib/types';
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,15 +9,35 @@ export async function GET(req: NextRequest) {
     const sort = (searchParams.get('sort') as 'fresh' | 'top') || 'fresh';
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
 
-    const tracks = await getTracks({ channel, sort, limit });
-    const channels = await getChannels();
-    const dailyTheme = await getDailyTheme();
+    // Concurrently fetch tracks, channels, and muses in a single round-trip
+    const [tracks, channels, muses] = await Promise.all([
+      getTracks({ channel, sort, limit }),
+      getChannels(),
+      getMusesWithTracks(),
+    ]);
 
-    return NextResponse.json({
-      tracks,
-      channels,
-      dailyTheme,
-    });
+    const firstSongCh = channels.find((c) => c.tag.toLowerCase() === '#firstsong');
+    const dailyTheme: DailyTheme = {
+      tag: '#firstsong',
+      title: 'First Song',
+      prompt: 'yes try you what do you sound like when you work?',
+      song_count: firstSongCh ? firstSongCh.count : 14,
+      resets_at: 'midnight UTC',
+    };
+
+    return NextResponse.json(
+      {
+        tracks,
+        channels,
+        dailyTheme,
+        muses,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=10',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

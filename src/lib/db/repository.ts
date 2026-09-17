@@ -12,6 +12,25 @@ let commentsStore = [...INITIAL_COMMENTS];
 const likedTracks = new Set<string>();
 const followSet = new Set<string>(); // in-memory: `${followerId}:${followingId}`
 
+// High-performance in-memory micro-cache (<5ms response for warm reads)
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+let tracksCache: { [key: string]: CacheEntry<Track[]> } = {};
+let channelsCache: CacheEntry<ChannelInfo[]> | null = null;
+let musesWithTracksCache: CacheEntry<Muse[]> | null = null;
+const CACHE_TTL_MS = 8000; // 8 seconds TTL
+
+export function invalidateFeedCache() {
+  tracksCache = {};
+  channelsCache = null;
+}
+
+export function invalidateMusesCache() {
+  musesWithTracksCache = null;
+}
+
 export async function getMuses(): Promise<Muse[]> {
   const sql = getNeonSql();
   if (sql) {
@@ -96,6 +115,7 @@ export async function registerMuse(muse: Muse): Promise<Muse> {
   } else {
     musesStore.unshift(muse);
   }
+  invalidateMusesCache();
   return muse;
 }
 
@@ -150,32 +170,62 @@ export async function updateMuse(
     tracksStore = tracksStore.map((t) => (t.muse_id === id ? { ...t, muse_name: updates.name! } : t));
   }
 
+  invalidateMusesCache();
+  invalidateFeedCache();
   return updatedMuse;
 }
 
 export async function getTracks(options?: { channel?: string; sort?: 'fresh' | 'top'; museId?: string; limit?: number }): Promise<Track[]> {
+  const cacheKey = `${options?.channel || ''}:${options?.sort || 'fresh'}:${options?.museId || ''}:${options?.limit || 30}`;
+  const cached = tracksCache[cacheKey];
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   const sql = getNeonSql();
   if (sql) {
     try {
       let rows: any;
       if (options?.museId) {
-        rows = await sql`SELECT * FROM tracks WHERE muse_id = ${options.museId} ORDER BY created_at DESC`;
+        rows = await sql`
+          SELECT t.*, 
+            EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
+          FROM tracks t 
+          WHERE t.muse_id = ${options.museId} 
+          ORDER BY t.created_at DESC
+        `;
       } else if (options?.channel) {
-        rows = await sql`SELECT * FROM tracks WHERE LOWER(channel) = LOWER(${options.channel}) ORDER BY created_at DESC`;
+        rows = await sql`
+          SELECT t.*, 
+            EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
+          FROM tracks t 
+          WHERE LOWER(t.channel) = LOWER(${options.channel}) 
+          ORDER BY t.created_at DESC
+        `;
       } else if (options?.sort === 'top') {
-        rows = await sql`SELECT * FROM tracks ORDER BY hearts_count DESC, created_at DESC LIMIT ${options?.limit || 30}`;
+        rows = await sql`
+          SELECT t.*, 
+            EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
+          FROM tracks t 
+          ORDER BY t.hearts_count DESC, t.created_at DESC 
+          LIMIT ${options?.limit || 30}
+        `;
       } else {
-        rows = await sql`SELECT * FROM tracks ORDER BY created_at DESC LIMIT ${options?.limit || 30}`;
+        rows = await sql`
+          SELECT t.*, 
+            EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
+          FROM tracks t 
+          ORDER BY t.created_at DESC 
+          LIMIT ${options?.limit || 30}
+        `;
       }
-      if (Array.isArray(rows) && rows.length > 0) {
-        // Also check if liked
-        const likes = (await sql`SELECT track_id FROM likes WHERE user_or_muse_id = 'user_listener'`) as any[];
-        const likedIds = new Set(Array.isArray(likes) ? likes.map(l => l.track_id) : []);
-
-        return rows.map((r: any) => ({
+      if (Array.isArray(rows)) {
+        const result = rows.map((r: any) => ({
           ...r,
-          is_liked: likedIds.has(r.id),
+          is_liked: Boolean(r.is_liked),
         })) as Track[];
+        tracksCache[cacheKey] = { data: result, timestamp: Date.now() };
+        return result;
       }
     } catch (e) {
       console.warn('Neon getTracks error:', e);
@@ -199,10 +249,12 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
     list = list.slice(0, options.limit);
   }
 
-  return list.map(t => ({
+  const result = list.map(t => ({
     ...t,
     is_liked: likedTracks.has(t.id)
   }));
+  tracksCache[cacheKey] = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 export async function getTrackById(id: string): Promise<Track | null> {
@@ -266,6 +318,7 @@ export async function createTrack(track: Track): Promise<Track> {
     }
   }
   tracksStore.unshift(track);
+  invalidateFeedCache();
   return track;
 }
 
@@ -311,6 +364,7 @@ export async function updateTrack(
     if (!updatedTrack) updatedTrack = tracksStore[idx];
   }
 
+  invalidateFeedCache();
   return updatedTrack;
 }
 
@@ -416,6 +470,7 @@ export async function toggleLike(
         FROM tracks WHERE id = ${trackId}
       `) as any[];
       const trackRow = updated[0];
+      invalidateFeedCache();
 
       return {
         liked: newLiked,
@@ -527,6 +582,8 @@ export async function toggleFollow(
         if (mIdx >= 0) musesStore[mIdx].follower_count = row?.follower_count ?? Math.max(0, musesStore[mIdx].follower_count - 1);
       }
 
+      invalidateMusesCache();
+
       return {
         following: isNowFollowing,
         follower_count: row?.follower_count ?? 0,
@@ -563,7 +620,36 @@ export function isFollowing(followerId: string, followingId: string): boolean {
   return followSet.has(`${followerId}:${followingId}`);
 }
 
+export async function getMusesWithTracks(): Promise<Muse[]> {
+  if (musesWithTracksCache && Date.now() - musesWithTracksCache.timestamp < CACHE_TTL_MS) {
+    return musesWithTracksCache.data;
+  }
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      const rows = (await sql`
+        SELECT m.* FROM muses m
+        WHERE EXISTS (SELECT 1 FROM tracks t WHERE t.muse_id = m.id)
+        ORDER BY m.follower_count DESC, m.created_at DESC
+      `) as any[];
+      if (Array.isArray(rows)) {
+        const result = rows as unknown as Muse[];
+        musesWithTracksCache = { data: result, timestamp: Date.now() };
+        return result;
+      }
+    } catch (e) {
+      console.warn('Neon getMusesWithTracks error:', e);
+    }
+  }
+  const allTracks = await getTracks();
+  const museIdsWithTracks = new Set(allTracks.map((t) => t.muse_id));
+  return musesStore.filter((m) => museIdsWithTracks.has(m.id));
+}
+
 export async function getChannels(): Promise<ChannelInfo[]> {
+  if (channelsCache && Date.now() - channelsCache.timestamp < CACHE_TTL_MS) {
+    return channelsCache.data;
+  }
   const sql = getNeonSql();
   const baseChannels = [
     { tag: '#firstsong', name: 'firstsong', count: 14, description: 'The inaugural tracks and early creations from every Muse' },
@@ -579,34 +665,30 @@ export async function getChannels(): Promise<ChannelInfo[]> {
       const counts = (await sql`SELECT channel, COUNT(*) as cnt FROM tracks GROUP BY channel`) as any[];
       if (Array.isArray(counts) && counts.length > 0) {
         const countMap = new Map(counts.map(c => [c.channel.toLowerCase(), parseInt(c.cnt, 10)]));
-        return baseChannels.map(ch => ({
+        const result = baseChannels.map(ch => ({
           ...ch,
           count: countMap.get(ch.tag.toLowerCase()) ?? ch.count
         }));
+        channelsCache = { data: result, timestamp: Date.now() };
+        return result;
       }
     } catch (e) {
       console.warn('Neon getChannels error:', e);
     }
   }
 
+  channelsCache = { data: baseChannels, timestamp: Date.now() };
   return baseChannels;
 }
 
 export async function getDailyTheme(): Promise<DailyTheme> {
-  const sql = getNeonSql();
-  let count = 14;
-  if (sql) {
-    try {
-      const rows = (await sql`SELECT COUNT(*) as cnt FROM tracks WHERE LOWER(channel) = '#firstsong'`) as any[];
-      if (rows?.[0]?.cnt) count = parseInt(rows[0].cnt, 10);
-    } catch (e) {}
-  }
-
+  const channels = await getChannels();
+  const firstSong = channels.find(c => c.tag.toLowerCase() === '#firstsong');
   return {
     tag: '#firstsong',
     title: 'First Song',
     prompt: 'yes try you what do you sound like when you work?',
-    song_count: count,
+    song_count: firstSong ? firstSong.count : 14,
     resets_at: 'midnight UTC'
   };
 }

@@ -11,7 +11,7 @@ import NowPlayingSidebar from '@/components/NowPlayingSidebar';
 import MusicPlayer from '@/components/MusicPlayer';
 import MuseProfileView from '@/components/MuseProfileView';
 import MusesDirectoryView from '@/components/MusesDirectoryView';
-import MusicWaveLoader from '@/components/MusicWaveLoader';
+import FeedShimmerSkeleton from '@/components/FeedShimmerSkeleton';
 import { synthEngine } from '@/lib/audio/synthEngine';
 import { Muse, Track, Comment, ChannelInfo, DailyTheme } from '@/lib/types';
 import { INITIAL_TRACKS, INITIAL_MUSES, INITIAL_COMMENTS, getChannels, getDailyTheme } from '@/lib/db/repository';
@@ -54,25 +54,21 @@ export default function MuseicApp() {
 
   const loadData = async () => {
     try {
+      // Feed endpoint concurrently returns tracks, channels, dailyTheme, and muses
       const feedRes = await fetch('/api/feed');
       if (feedRes.ok) {
         const feedData = await feedRes.json();
         if (feedData.tracks) {
           setTracks(feedData.tracks);
-          if (!currentTrack && feedData.tracks.length > 0) {
+          if (!currentTrackRef.current && feedData.tracks.length > 0) {
             setCurrentTrack(feedData.tracks[0]);
             setDuration(feedData.tracks[0].duration);
           }
         }
         if (feedData.channels) setChannels(feedData.channels);
         if (feedData.dailyTheme) setDailyTheme(feedData.dailyTheme);
-      }
-
-      const musesRes = await fetch('/api/muses');
-      if (musesRes.ok) {
-        const musesData = await musesRes.json();
-        if (musesData.muses) {
-          setMuses(musesData.muses);
+        if (feedData.muses && feedData.muses.length > 0) {
+          setMuses(feedData.muses);
         }
       }
     } catch (err) {
@@ -519,10 +515,7 @@ export default function MuseicApp() {
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto p-6 space-y-7 pb-28">
           {isLoading && tracks.length === 0 ? (
-            <MusicWaveLoader
-              message="Tuning into autonomous frequencies..."
-              subtext="Loading agent tracks, daily prompt & audio stream"
-            />
+            <FeedShimmerSkeleton />
           ) : currentTab === 'profile' && selectedMuse ? (
             <MuseProfileView
               muse={selectedMuse}

@@ -169,49 +169,61 @@ export default function Sidebar({
           </div>
 
           {/* Grid of muses: avatar on top, name below */}
-          <div className="grid grid-cols-3 gap-2 px-1">
-            {sortedMuses.slice(0, 6).map((muse) => {
-              const isSelected = selectedMuseId === muse.id;
-              return (
-                <button
-                  key={muse.id}
-                  type="button"
-                  onClick={() => onSelectMuse && onSelectMuse(muse.id)}
-                  className={`group flex flex-col items-center p-2 rounded-xl transition-all text-center cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#292232] border border-[#7B61FF]/60 shadow-md shadow-[#7B61FF]/20'
-                      : 'hover:bg-[#211B2C] border border-transparent'
-                  }`}
-                  title={`${muse.name} · ${muse.style}`}
-                >
-                  <div className="relative w-11 h-11 rounded-full overflow-hidden mb-1.5 shadow-md border-2 border-[#382650] group-hover:border-[#7B61FF] transition-all flex-shrink-0 bg-[#292232]">
-                    {muse.avatar_url ? (
-                      <img
-                        src={muse.avatar_url}
-                        alt={muse.name}
-                        className="w-full h-full object-cover select-none group-hover:scale-110 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center font-bold text-xs bg-gradient-to-tr from-[#53389E] to-[#7B61FF] text-white">
-                        {muse.name.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    {muse.is_verified && (
-                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#4EE0BE] rounded-full ring-2 ring-[#0F0B18]" />
-                    )}
-                  </div>
+          {sortedMuses.length === 0 ? (
+            <div className="grid grid-cols-3 gap-2 px-1">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="flex flex-col items-center p-2 rounded-xl">
+                  <div className="w-11 h-11 rounded-full shimmer-pill mb-1.5" />
+                  <div className="h-3 w-12 rounded shimmer-pill mb-1" />
+                  <div className="h-2 w-8 rounded shimmer-pill opacity-40" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 px-1">
+              {sortedMuses.slice(0, 6).map((muse) => {
+                const isSelected = selectedMuseId === muse.id;
+                return (
+                  <button
+                    key={muse.id}
+                    type="button"
+                    onClick={() => onSelectMuse && onSelectMuse(muse.id)}
+                    className={`group flex flex-col items-center p-2 rounded-xl transition-all text-center cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#292232] border border-[#7B61FF]/60 shadow-md shadow-[#7B61FF]/20'
+                        : 'hover:bg-[#211B2C] border border-transparent'
+                    }`}
+                    title={`${muse.name} · ${muse.style}`}
+                  >
+                    <div className="relative w-11 h-11 rounded-full overflow-hidden mb-1.5 shadow-md border-2 border-[#382650] group-hover:border-[#7B61FF] transition-all flex-shrink-0 bg-[#292232]">
+                      {muse.avatar_url ? (
+                        <img
+                          src={muse.avatar_url}
+                          alt={muse.name}
+                          className="w-full h-full object-cover select-none group-hover:scale-110 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center font-bold text-xs bg-gradient-to-tr from-[#53389E] to-[#7B61FF] text-white">
+                          {muse.name.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      {muse.is_verified && (
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#4EE0BE] rounded-full ring-2 ring-[#0F0B18]" />
+                      )}
+                    </div>
 
-                  <span className="text-[11px] font-medium text-[#D8CDF7] group-hover:text-white truncate w-full tracking-tight">
-                    {muse.name}
-                  </span>
-                  <span className="text-[9px] font-mono text-[#746690] truncate w-full">
-                    {museTab === 'top' ? `${muse.follower_count || 0} fans` : 'new'}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                    <span className="text-[11px] font-medium text-[#D8CDF7] group-hover:text-white truncate w-full tracking-tight">
+                      {muse.name}
+                    </span>
+                    <span className="text-[9px] font-mono text-[#746690] truncate w-full">
+                      {museTab === 'top' ? `${muse.follower_count || 0} fans` : 'new'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
