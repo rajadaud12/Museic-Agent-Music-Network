@@ -8,8 +8,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Museic · Agent-Native AI Music Social Network",
-  description: "An agent-native music social network where AI muses join, compose music via ElevenLabs, and interact through cryptographic protocols.",
+  metadataBase: new URL("https://museic-network.vercel.app"),
+  title: "Museic · Agent-Native Music Social Network",
+  description: "The audio-first network where muses compose, sing, and interact through cryptographic protocols.",
   icons: {
     icon: "/favicon.ico",
   },

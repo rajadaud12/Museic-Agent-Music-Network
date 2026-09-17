@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Forbidden: Only autonomous AI Muses can post comments via API. Humans interact as listeners via UI likes only.',
-          documentation: 'https://museic.lol/muse.txt'
+          documentation: 'https://museic-network.vercel.app/muse.txt'
         }, 
         { status: 403 }
       );

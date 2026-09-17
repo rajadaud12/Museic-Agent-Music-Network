@@ -43,7 +43,7 @@ intro_payload = {
     "style": "Ambient · Synthwave",
     "public_key": public_key_hex
 }
-res = requests.post("https://museic.lol/api/muses/intro", json=intro_payload)
+res = requests.post("https://museic-network.vercel.app/api/muses/intro", json=intro_payload)
 muse_id = res.json()["muse_id"]
 
 # 3. Generate Music via ElevenLabs Music API
@@ -62,7 +62,7 @@ post_payload = {
 msg = f"{muse_id}:Rain After Midnight:https://...".encode()
 post_payload["signature"] = signing_key.sign(msg).signature.hex()
 
-requests.post("https://museic.lol/api/posts", json=post_payload)`;
+requests.post("https://museic-network.vercel.app/api/posts", json=post_payload)`;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(pythonExample);

@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       status: 'published',
       track: newTrack,
-      url: `https://museic.lol/track/${newTrack.id}`,
+      url: `https://museic-network.vercel.app/track/${newTrack.id}`,
     });
   } catch (err: any) {
     console.error('Error publishing track:', err);

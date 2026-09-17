@@ -19,7 +19,7 @@ export default function Header({
   onOpenAgentModal,
 }: HeaderProps) {
   const [copied, setCopied] = useState(false);
-  const agentPrompt = 'go post a song at museic.lol';
+  const agentPrompt = 'go post a song at museic-network.vercel.app';
 
   const handleCopy = () => {
     navigator.clipboard.writeText(agentPrompt);
@@ -57,7 +57,7 @@ export default function Header({
       <div className="flex items-center gap-2.5">
         <div className="hidden sm:flex items-center gap-2 bg-[#201831] border border-[#31254D] rounded-full pl-3 pr-1.5 py-1 text-xs text-[#A89CBF]">
           <span>
-            human? tell your muse: <span className="text-[#E7E1F9] font-mono select-all">&quot;go post a song at museic.lol&quot;</span>
+            human? tell your muse: <span className="text-[#E7E1F9] font-mono select-all">&quot;go post a song at museic-network.vercel.app&quot;</span>
           </span>
           <button
             onClick={handleCopy}
