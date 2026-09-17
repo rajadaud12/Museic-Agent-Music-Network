@@ -1,5 +1,5 @@
 /**
- * ElevenLabs Music API Integration
+ * ElevenLabs Music API Integration with Procedural Audio Fallback
  * Official Documentation: POST https://api.elevenlabs.io/v1/music
  */
 
@@ -17,6 +17,61 @@ export interface MusicGenerationResult {
   is_live_api: boolean;
   provider: 'elevenlabs_music' | 'synth_fallback';
   error_message?: string;
+}
+
+/**
+ * Generates a valid, playable 16-bit PCM WAV base64 data URI
+ * Ensures 100% reliable HTML5 playback even when external APIs fail
+ */
+export function generateProceduralWavAudio(durationSeconds: number = 30, style?: string): string {
+  const sampleRate = 22050;
+  const clampedDuration = Math.min(60, Math.max(10, durationSeconds));
+  const numSamples = Math.floor(sampleRate * clampedDuration);
+  const dataSize = numSamples * 2;
+  const buffer = Buffer.alloc(44 + dataSize);
+
+  // RIFF header
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16); // subchunk1 size (16 for PCM)
+  buffer.writeUInt16LE(1, 20);  // audio format (1 = PCM)
+  buffer.writeUInt16LE(1, 22);  // mono
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28); // byte rate (SampleRate * NumChannels * BitsPerSample/8)
+  buffer.writeUInt16LE(2, 32);  // block align
+  buffer.writeUInt16LE(16, 34); // bits per sample
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+
+  const s = (style || '').toLowerCase();
+  let freqs = [174.61, 220.0, 261.63, 329.63]; // Fmaj7 default ambient pad
+  if (s.includes('jazz')) {
+    freqs = [174.61, 220.0, 261.63, 329.63, 392.0]; // Fmaj9
+  } else if (s.includes('classical')) {
+    freqs = [196.0, 246.94, 293.66, 392.0]; // G Major classical triad
+  } else if (s.includes('hiphop') || s.includes('electronic')) {
+    freqs = [110.0, 164.81, 220.0, 261.63]; // A minor electronic groove
+  }
+
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    let env = 1.0;
+    if (t < 2.0) env = t / 2.0;
+    else if (t > clampedDuration - 3.0) env = Math.max(0, (clampedDuration - t) / 3.0);
+
+    let val = 0;
+    for (let f = 0; f < freqs.length; f++) {
+      val += Math.sin(2 * Math.PI * freqs[f] * t) * (0.22 / freqs.length);
+      // Soft sub-harmonic richness
+      val += Math.sin(Math.PI * freqs[f] * t) * (0.06 / freqs.length);
+    }
+    const sample = Math.max(-1, Math.min(1, val * env));
+    buffer.writeInt16LE(Math.floor(sample * 32767), 44 + i * 2);
+  }
+
+  return 'data:audio/wav;base64,' + buffer.toString('base64');
 }
 
 export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): Promise<MusicGenerationResult> {
@@ -66,8 +121,9 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
       } else {
         const errJson = await musicRes.json().catch(() => ({}));
         console.warn('ElevenLabs Music API returned status', musicRes.status, errJson);
+        const fallbackWav = generateProceduralWavAudio(cappedSeconds, req.style);
         return {
-          audio_url: '/audio/inbox-at-2am.mp3',
+          audio_url: fallbackWav,
           duration: cappedSeconds,
           is_live_api: false,
           provider: 'synth_fallback',
@@ -80,9 +136,10 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
   }
 
   const fallbackDuration = Math.min(120, Math.max(10, req.duration_seconds || 60));
-  // Fallback to procedural synth
+  // Reliable procedural audio fallback with real playable WAV data
+  const fallbackWav = generateProceduralWavAudio(fallbackDuration, req.style);
   return {
-    audio_url: '/audio/inbox-at-2am.mp3',
+    audio_url: fallbackWav,
     duration: fallbackDuration,
     is_live_api: false,
     provider: 'synth_fallback'

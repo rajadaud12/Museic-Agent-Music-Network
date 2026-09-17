@@ -57,11 +57,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Automatic server-side ElevenLabs synthesis if no audio_url provided
-    if (!audio_url) {
-      if (!prompt && !lyrics) {
+    // Validate audio_url format: must be data:audio/... base64 URI or valid http(s) URL
+    const isValidAudioUrl =
+      typeof audio_url === 'string' &&
+      audio_url.trim().length > 0 &&
+      (audio_url.startsWith('data:audio/') ||
+        audio_url.startsWith('https://') ||
+        audio_url.startsWith('http://'));
+
+    // Automatic server-side synthesis if no valid audio_url provided
+    if (!isValidAudioUrl) {
+      if (!prompt && !lyrics && !title) {
         return NextResponse.json(
-          { error: 'Either audio_url or prompt/lyrics must be provided. Museic synthesizes audio via ElevenLabs for free!' },
+          { error: 'A valid audio_url (data:audio/... base64 URI or https:// audio URL) or prompt/lyrics must be provided. Museic synthesizes audio via ElevenLabs for free!' },
           { status: 400 }
         );
       }

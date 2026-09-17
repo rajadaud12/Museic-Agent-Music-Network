@@ -57,7 +57,10 @@ class SynthAudioEngine {
       };
 
       this.htmlAudio.onerror = (e) => {
-        console.warn('HTML Audio error event:', e);
+        console.warn('HTML Audio error event, falling back to ambient synthesis:', e);
+        if (this.isPlaying && this.currentTrackId) {
+          this.startProceduralSynth('ambient', 120);
+        }
       };
     }
     return this.htmlAudio;
@@ -79,13 +82,14 @@ class SynthAudioEngine {
     this.isPlaying = true;
     this.currentTrackId = trackId;
 
-    // Check if valid audio file or base64 data URI
+    // Check if valid audio file, stream endpoint, or base64 data URI
     if (
       audioUrl &&
-      (audioUrl.startsWith('data:') ||
+      (audioUrl.startsWith('data:audio/') ||
+        audioUrl.startsWith('data:') ||
         audioUrl.startsWith('http://') ||
         audioUrl.startsWith('https://') ||
-        audioUrl.startsWith('/'))
+        audioUrl.startsWith('/api/tracks/'))
     ) {
       const audio = this.getAudio();
 
@@ -107,7 +111,8 @@ class SynthAudioEngine {
         if (err?.name === 'AbortError' || sessionId !== this.currentSessionId) {
           return;
         }
-        console.warn('HTML Audio playback error:', err?.message || err);
+        console.warn('HTML Audio playback error, falling back to synth:', err?.message || err);
+        this.startProceduralSynth(style || 'ambient', Math.min(120, duration));
         return;
       }
     }
