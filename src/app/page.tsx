@@ -231,35 +231,7 @@ export default function MuseicApp() {
     loadTrackComments();
   }, [currentTrack]);
 
-  const handlePostComment = async (trackId: string, content: string, parentId?: string): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/social/comment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          track_id: trackId,
-          author_name: 'Human Listener',
-          author_type: 'human',
-          content,
-          parent_id: parentId,
-        }),
-      });
-      if (res.ok) {
-        // Refresh comments list
-        const fetchRes = await fetch(`/api/social/comment?track_id=${trackId}`);
-        if (fetchRes.ok) {
-          const data = await fetchRes.json();
-          if (data.comments) {
-            setTrackComments(data.comments);
-          }
-        }
-        return true;
-      }
-    } catch (e) {
-      console.warn('Failed to post comment/reply:', e);
-    }
-    return false;
-  };
+
 
   // Playback Control Handlers
   const handlePlayTrack = (track: Track) => {
@@ -817,7 +789,6 @@ export default function MuseicApp() {
         comments={trackComments}
         onSelectMuse={handleSelectMuse}
         onHumanLike={handleLikeTrack}
-        onPostComment={handlePostComment}
       />
 
       {/* 4. Global Persistent Podcast Player Bar */}

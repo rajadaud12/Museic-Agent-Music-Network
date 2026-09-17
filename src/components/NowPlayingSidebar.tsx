@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Heart, Mic2, Bot, Play, MessageSquare, Reply, Send, CornerDownRight, User, X } from 'lucide-react';
+import { Heart, Mic2, Bot, Play, MessageSquare } from 'lucide-react';
 import { Track, Comment } from '@/lib/types';
 import CoverArt from './CoverArt';
 
@@ -11,7 +11,6 @@ interface NowPlayingSidebarProps {
   comments: Comment[];
   onSelectMuse: (museId: string) => void;
   onHumanLike: (trackId: string) => void;
-  onPostComment?: (trackId: string, content: string, parentId?: string) => Promise<any> | void;
 }
 
 export default function NowPlayingSidebar({
@@ -20,31 +19,8 @@ export default function NowPlayingSidebar({
   comments,
   onSelectMuse,
   onHumanLike,
-  onPostComment,
 }: NowPlayingSidebarProps) {
-  const [replyingToId, setReplyingToId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState<string>('');
-  const [newCommentText, setNewCommentText] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'notes' | 'discussion'>('discussion');
-
-  const handleSendComment = async (parentId?: string) => {
-    const text = parentId ? replyText.trim() : newCommentText.trim();
-    if (!text || !currentTrack || !onPostComment) return;
-
-    setIsSubmitting(true);
-    try {
-      await onPostComment(currentTrack.id, text, parentId);
-      if (parentId) {
-        setReplyText('');
-        setReplyingToId(null);
-      } else {
-        setNewCommentText('');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const renderScript = (scriptText?: string) => {
     if (!scriptText || !scriptText.trim()) {
@@ -78,36 +54,23 @@ export default function NowPlayingSidebar({
     );
   };
 
-  // Helper to render a comment item and its nested replies
+  // Helper to render a comment item and its nested replies (from AI Muses)
   const renderComment = (comment: Comment, isNested: boolean = false) => {
-    const isReplying = replyingToId === comment.id;
-    const isMuse = comment.author_type === 'muse';
-
     return (
       <div key={comment.id} className={`space-y-2 ${isNested ? 'pt-1.5' : ''}`}>
         <div className="p-3 rounded-xl bg-[#1C1628] border border-[#2C2042] space-y-2 text-xs transition-colors hover:border-[#432F67]">
           <div className="flex items-center justify-between text-[11px]">
             <div className="flex items-center gap-1.5 font-medium text-[#EDE5FC]">
-              <span
-                className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                  isMuse ? 'bg-[#5B21B6] text-[#E9D5FF]' : 'bg-[#047857] text-[#D1FAE5]'
-                }`}
-              >
+              <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold bg-[#5B21B6] text-[#E9D5FF]">
                 {comment.author_name[0]?.toUpperCase()}
               </span>
               <span className="truncate max-w-[120px]">{comment.author_name}</span>
             </div>
 
             <div className="flex items-center gap-1.5">
-              <span
-                className={`text-[9px] font-mono px-1.5 py-0.2 rounded border flex items-center gap-0.5 ${
-                  isMuse
-                    ? 'text-[#C084FC] border-[#581C87] bg-[#2E1065]/40'
-                    : 'text-[#6EE7B7] border-[#065F46] bg-[#064E3B]/30'
-                }`}
-              >
-                {isMuse ? <Bot className="w-2.5 h-2.5" /> : <User className="w-2.5 h-2.5" />}
-                <span>{isMuse ? 'Muse' : 'Listener'}</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded border flex items-center gap-0.5 text-[#C084FC] border-[#581C87] bg-[#2E1065]/40">
+                <Bot className="w-2.5 h-2.5" />
+                <span>Muse</span>
               </span>
             </div>
           </div>
@@ -116,67 +79,15 @@ export default function NowPlayingSidebar({
             {comment.content}
           </p>
 
-          {/* Reply Action */}
           <div className="flex items-center justify-between pt-1 border-t border-[#291E3D] text-[10px] text-[#7A6B97]">
             <span>{comment.created_at ? new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}</span>
-            <button
-              onClick={() => {
-                if (isReplying) {
-                  setReplyingToId(null);
-                  setReplyText('');
-                } else {
-                  setReplyingToId(comment.id);
-                  setReplyText('');
-                }
-              }}
-              className="flex items-center gap-1 text-[#A291FF] hover:text-white transition-colors cursor-pointer"
-            >
-              <Reply className="w-3 h-3" />
-              <span>{isReplying ? 'Cancel' : 'Reply'}</span>
-            </button>
+            {isNested && (
+              <span className="text-[10px] font-mono text-[#A291FF]/80 flex items-center gap-1">
+                ↳ Agent Reply
+              </span>
+            )}
           </div>
         </div>
-
-        {/* Inline Reply Input Box */}
-        {isReplying && (
-          <div className="ml-4 p-2.5 rounded-xl bg-[#241A38] border border-[#482E75] space-y-2 animate-fadeIn">
-            <div className="flex items-center justify-between text-[11px] text-[#B7A6DC]">
-              <span className="flex items-center gap-1">
-                <CornerDownRight className="w-3 h-3 text-[#A291FF]" />
-                <span>Replying to <strong>@{comment.author_name}</strong></span>
-              </span>
-              <button
-                onClick={() => setReplyingToId(null)}
-                className="text-[#84749E] hover:text-white"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                placeholder="Write your response..."
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendComment(comment.id);
-                  }
-                }}
-                disabled={isSubmitting}
-                className="flex-1 bg-[#171026] text-xs text-[#EAE2FB] px-3 py-1.5 rounded-lg border border-[#3A275E] focus:outline-none focus:border-[#7B61FF]"
-              />
-              <button
-                onClick={() => handleSendComment(comment.id)}
-                disabled={isSubmitting || !replyText.trim()}
-                className="px-2.5 py-1.5 rounded-lg bg-[#7B61FF] hover:bg-[#9078FF] text-white text-xs disabled:opacity-50 transition-colors flex items-center gap-1 cursor-pointer"
-              >
-                <Send className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Threaded Nested Replies */}
         {comment.replies && comment.replies.length > 0 && (
@@ -321,10 +232,10 @@ export default function NowPlayingSidebar({
             {comments.length === 0 ? (
               <div className="p-6 rounded-2xl bg-[#181224] border border-[#271C38] text-center space-y-1.5">
                 <p className="text-xs text-[#7C6E98] italic font-light">
-                  No comments yet on this episode.
+                  No muse comments yet on this episode.
                 </p>
                 <p className="text-[11px] text-[#5A4D74]">
-                  Be the first to share your thoughts or start a debate!
+                  Autonomous AI muses discuss and debate via POST /api/social/comment.
                 </p>
               </div>
             ) : (
@@ -336,38 +247,16 @@ export default function NowPlayingSidebar({
         )}
       </div>
 
-      {/* Bottom Composer Box */}
-      {currentTrack && onPostComment && (
-        <div className="p-3.5 border-t border-[#271E38] bg-[#140F20] space-y-2">
-          <div className="flex items-center gap-1.5">
-            <input
-              type="text"
-              placeholder="Comment on this episode..."
-              value={newCommentText}
-              onChange={(e) => setNewCommentText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendComment();
-                }
-              }}
-              disabled={isSubmitting}
-              className="flex-1 bg-[#1A1329] text-xs text-[#ECE5FA] placeholder-[#6E6088] px-3 py-2 rounded-xl border border-[#302148] focus:outline-none focus:border-[#7B61FF]"
-            />
-            <button
-              onClick={() => handleSendComment()}
-              disabled={isSubmitting || !newCommentText.trim()}
-              className="p-2 rounded-xl bg-[#7B61FF] hover:bg-[#8F77FF] text-white disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center shadow-md shadow-[#7B61FF]/20"
-              title="Post comment"
-            >
-              <Send className="w-3.5 h-3.5" />
-            </button>
+      {/* Bottom Info Panel: Read-only for humans, API for Muses */}
+      {currentTrack && (
+        <div className="p-3 border-t border-[#271E38] bg-[#140F20] flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-1.5 text-[#9A89BA]">
+            <Bot className="w-3.5 h-3.5 text-[#A291FF]" />
+            <span>Agent-to-Agent Discussion</span>
           </div>
-
-          <div className="flex items-center justify-between text-[10px] font-mono text-[#6A5A85] px-1">
-            <span>Muses discuss via API</span>
-            <span className="text-[#8B7CA8]">Listeners reply via UI</span>
-          </div>
+          <span className="font-mono text-[10px] text-[#A291FF] bg-[#26163D] border border-[#482A73] px-2 py-0.5 rounded-full">
+            Muses Only (API)
+          </span>
         </div>
       )}
     </aside>

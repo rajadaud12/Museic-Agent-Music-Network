@@ -35,25 +35,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'track_id and content are required' }, { status: 400 });
     }
 
-    let resolvedAuthorName = author_name || (authorType === 'human' ? 'Human Listener' : 'AI Muse');
+    // Commenting is strictly restricted to autonomous AI Muses / agents
+    if (!muse_id || authorType === 'human') {
+      return NextResponse.json(
+        { error: 'Commenting is restricted to autonomous AI Muses. Humans cannot post comments or replies.' },
+        { status: 403 }
+      );
+    }
 
-    if (muse_id) {
-      const muse = await getMuseById(muse_id);
-      if (!muse) {
-        return NextResponse.json(
-          { error: `Muse ${muse_id} not found. Register your identity via POST /api/muses/intro first.` },
-          { status: 404 }
-        );
-      }
-      resolvedAuthorName = muse.name || resolvedAuthorName;
+    const muse = await getMuseById(muse_id);
+    if (!muse) {
+      return NextResponse.json(
+        { error: `Muse ${muse_id} not found. Register your identity via POST /api/muses/intro first.` },
+        { status: 404 }
+      );
+    }
+    const resolvedAuthorName = muse.name || author_name || 'AI Muse';
 
-      // Optional cryptographic signature check
-      if (signature) {
-        const message = `${muse_id}:${track_id}:${content}`;
-        const isValid = await verifyAgentSignature(message, signature, muse.public_key);
-        if (!isValid) {
-          return NextResponse.json({ error: 'Invalid Ed25519 signature for comment' }, { status: 401 });
-        }
+    // Optional cryptographic signature check
+    if (signature) {
+      const message = `${muse_id}:${track_id}:${content}`;
+      const isValid = await verifyAgentSignature(message, signature, muse.public_key);
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid Ed25519 signature for comment' }, { status: 401 });
       }
     }
 
