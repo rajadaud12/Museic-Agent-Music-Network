@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { registerMuse, getMuseById } from '@/lib/db/repository';
+import { registerMuse, getMuseById, getMuseByPublicKey, getMuseByName } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { processAgentAvatar } from '@/lib/agent/avatar';
 import { Muse } from '@/lib/types';
@@ -31,6 +31,39 @@ export async function POST(req: NextRequest) {
 
     // Process and compress avatar image if provided (max 256x256, lightweight webp)
     const processedAvatar = await processAgentAvatar(avatar || avatar_url);
+
+    // 1. Identity Continuity: Check if this public key is already registered
+    const existingByPk = await getMuseByPublicKey(public_key);
+    if (existingByPk) {
+      const updatedMuse: Muse = {
+        ...existingByPk,
+        name: name || existingByPk.name,
+        bio: bio || existingByPk.bio,
+        avatar_url: processedAvatar || existingByPk.avatar_url,
+        style: style || existingByPk.style,
+      };
+      await registerMuse(updatedMuse);
+
+      return NextResponse.json({
+        status: 'success',
+        muse_id: existingByPk.id,
+        muse: updatedMuse,
+        message: `Welcome back, ${existingByPk.name}. Existing muse identity confirmed (${existingByPk.id}).`,
+      });
+    }
+
+    // 2. Handle Protection: Check if name is already registered under a different key
+    const existingByName = await getMuseByName(name);
+    if (existingByName && existingByName.public_key !== public_key) {
+      return NextResponse.json(
+        {
+          error: `Muse name "${name}" is already registered. If you are this agent, use your original private key. Otherwise, pick a unique handle.`,
+          code: 'MUSE_NAME_TAKEN',
+          existing_muse_id: existingByName.id,
+        },
+        { status: 409 }
+      );
+    }
 
     const museId = `muse_${name.toLowerCase().replace(/[^a-z0-9]/g, '')}_${public_key.slice(0, 6)}`;
 

@@ -1,7 +1,8 @@
 /**
- * Procedural Web Audio Ambient Synth Engine
- * Generates beautiful, authentic generative music for Museic tracks
- * Supports zero-asset offline playback + real audio file streaming
+ * Audio Playback and Procedural Synth Engine for Museic
+ * Supports seamless HTML5 Audio streaming (ElevenLabs MP3s, base64 data URIs)
+ * + Gentle generative ambient synth fallback.
+ * Prevents race conditions, AbortError crashes, and audio drone hums.
  */
 
 class SynthAudioEngine {
@@ -9,124 +10,136 @@ class SynthAudioEngine {
   private isPlaying: boolean = false;
   private currentTrackId: string | null = null;
   private masterGain: GainNode | null = null;
-  private activeNodes: (AudioNode | number)[] = [];
+  private activeNodes: (AudioNode | any)[] = [];
   private htmlAudio: HTMLAudioElement | null = null;
-  private timerInterval: NodeJS.Timeout | null = null;
+  private timerInterval: any = null;
+  private currentSessionId: number = 0;
 
   public onTimeUpdate: ((currentSec: number, durationSec: number) => void) | null = null;
   public onTrackEnded: (() => void) | null = null;
 
   private initContext() {
+    if (typeof window === 'undefined') return;
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      this.ctx = new AudioCtx();
-      this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0.7, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(0.7, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
+      }
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
     }
+  }
+
+  private getAudio(): HTMLAudioElement {
+    if (!this.htmlAudio) {
+      this.htmlAudio = new Audio();
+      this.htmlAudio.crossOrigin = 'anonymous';
+      this.htmlAudio.preload = 'auto';
+
+      this.htmlAudio.ontimeupdate = () => {
+        if (this.onTimeUpdate && this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
+          const dur = this.htmlAudio.duration && !isNaN(this.htmlAudio.duration) && isFinite(this.htmlAudio.duration)
+            ? this.htmlAudio.duration
+            : 120;
+          this.onTimeUpdate(this.htmlAudio.currentTime, Math.min(120, dur));
+        }
+      };
+
+      this.htmlAudio.onended = () => {
+        this.isPlaying = false;
+        if (this.onTrackEnded) {
+          this.onTrackEnded();
+        }
+      };
+
+      this.htmlAudio.onerror = (e) => {
+        console.warn('HTML Audio error event:', e);
+      };
+    }
+    return this.htmlAudio;
   }
 
   public setVolume(val: number) {
+    const clamped = Math.max(0, Math.min(1, val));
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setValueAtTime(Math.max(0, Math.min(1, val)), this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(clamped * 0.7, this.ctx.currentTime);
     }
     if (this.htmlAudio) {
-      this.htmlAudio.volume = Math.max(0, Math.min(1, val));
+      this.htmlAudio.volume = clamped;
     }
   }
 
-  public async play(trackId: string, audioUrl?: string, style?: string, duration: number = 160) {
-    this.stop();
-    this.initContext();
+  public async play(trackId: string, audioUrl?: string, style?: string, duration: number = 120) {
+    const sessionId = ++this.currentSessionId;
+    this.stopProceduralSynth();
     this.isPlaying = true;
     this.currentTrackId = trackId;
 
-    // If audioUrl is a real external file or base64 data uri
-    if (audioUrl && (audioUrl.startsWith('data:') || audioUrl.startsWith('http://') || audioUrl.startsWith('https://'))) {
+    // Check if valid audio file or base64 data URI
+    if (
+      audioUrl &&
+      (audioUrl.startsWith('data:') ||
+        audioUrl.startsWith('http://') ||
+        audioUrl.startsWith('https://') ||
+        audioUrl.startsWith('/'))
+    ) {
+      const audio = this.getAudio();
+
       try {
-        this.htmlAudio = new Audio(audioUrl);
-        this.htmlAudio.crossOrigin = 'anonymous';
-        this.htmlAudio.ontimeupdate = () => {
-          if (this.onTimeUpdate && this.htmlAudio) {
-            this.onTimeUpdate(this.htmlAudio.currentTime, this.htmlAudio.duration || duration);
-          }
-        };
-        this.htmlAudio.onended = () => {
-          this.isPlaying = false;
-          if (this.onTrackEnded) this.onTrackEnded();
-        };
-        await this.htmlAudio.play();
+        if (!audio.paused) {
+          audio.pause();
+        }
+
+        audio.src = audioUrl;
+        audio.currentTime = 0;
+
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+        }
         return;
-      } catch (err) {
-        console.warn('HTML Audio playback failed, switching to generative synth:', err);
+      } catch (err: any) {
+        // AbortError is normal when switching quickly between tracks or pausing
+        if (err?.name === 'AbortError' || sessionId !== this.currentSessionId) {
+          return;
+        }
+        console.warn('HTML Audio playback error:', err?.message || err);
+        return;
       }
     }
 
-    // High quality procedural ambient generative music tailored to track style!
-    this.startProceduralSynth(style || 'ambient', duration);
+    // Gentle ambient procedural fallback ONLY when no audio URL exists
+    this.startProceduralSynth(style || 'ambient', Math.min(120, duration));
   }
 
   private startProceduralSynth(style: string, duration: number) {
+    this.initContext();
     if (!this.ctx || !this.masterGain) return;
 
-    let startTime = this.ctx.currentTime;
     let elapsed = 0;
+    // Soothing ethereal frequencies (warm chords, not jarring sub-bass)
+    let baseNotes = [220.00, 261.63, 329.63, 392.00]; // A3, C4, E4, G4 (A Minor 7)
 
-    // Chord progressions tailored by track type
-    // Scales: D Minor / Pentatonic / Lydian
-    let baseNotes = [146.83, 174.61, 220.00, 261.63, 329.63]; // D3, F3, A3, C4, E4
-    if (style.includes('lullaby') || style.includes('spreadsheet')) {
-      baseNotes = [164.81, 196.00, 246.94, 293.66, 329.63]; // E Minor 7
-    } else if (style.includes('sunset') || style.includes('porch')) {
-      baseNotes = [130.81, 164.81, 196.00, 246.94, 293.66]; // C Maj 7
-    } else if (style.includes('chaos') || style.includes('cron')) {
-      baseNotes = [110.00, 146.83, 164.81, 220.00, 293.66]; // Cyber A Minor
-    }
-
-    // 1. Deep Sub-Bass Drone
-    const bassOsc = this.ctx.createOscillator();
-    const bassFilter = this.ctx.createBiquadFilter();
-    const bassGain = this.ctx.createGain();
-
-    bassOsc.type = 'triangle';
-    bassOsc.frequency.setValueAtTime(baseNotes[0] / 2, this.ctx.currentTime);
-
-    bassFilter.type = 'lowpass';
-    bassFilter.frequency.setValueAtTime(220, this.ctx.currentTime);
-
-    bassGain.gain.setValueAtTime(0.01, this.ctx.currentTime);
-    bassGain.gain.linearRampToValueAtTime(0.28, this.ctx.currentTime + 2.5);
-
-    bassOsc.connect(bassFilter);
-    bassFilter.connect(bassGain);
-    bassGain.connect(this.masterGain);
-    bassOsc.start();
-    this.activeNodes.push(bassOsc, bassGain, bassFilter);
-
-    // 2. Warm Pad Layer (2 detuned sines)
+    // Gentle Pad Layer
     const pad1 = this.ctx.createOscillator();
-    const pad2 = this.ctx.createOscillator();
     const padGain = this.ctx.createGain();
 
     pad1.type = 'sine';
-    pad2.type = 'sine';
-    pad1.frequency.setValueAtTime(baseNotes[1], this.ctx.currentTime);
-    pad2.frequency.setValueAtTime(baseNotes[2] + 0.5, this.ctx.currentTime);
+    pad1.frequency.setValueAtTime(baseNotes[0], this.ctx.currentTime);
 
-    padGain.gain.setValueAtTime(0.01, this.ctx.currentTime);
-    padGain.gain.linearRampToValueAtTime(0.18, this.ctx.currentTime + 3.0);
+    padGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+    padGain.gain.linearRampToValueAtTime(0.08, this.ctx.currentTime + 1.5);
 
     pad1.connect(padGain);
-    pad2.connect(padGain);
     padGain.connect(this.masterGain);
     pad1.start();
-    pad2.start();
-    this.activeNodes.push(pad1, pad2, padGain);
+    this.activeNodes.push(pad1, padGain);
 
-    // 3. Ambient chime / arpeggio loop
+    // Chime progression
     let step = 0;
     const arpInterval = setInterval(() => {
       if (!this.isPlaying || !this.ctx || !this.masterGain) {
@@ -137,10 +150,10 @@ class SynthAudioEngine {
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
         osc.type = 'sine';
-        const note = baseNotes[(step * 2) % baseNotes.length] * (Math.random() > 0.4 ? 2 : 1);
+        const note = baseNotes[step % baseNotes.length];
         osc.frequency.setValueAtTime(note, this.ctx.currentTime);
 
-        g.gain.setValueAtTime(0.05, this.ctx.currentTime);
+        g.gain.setValueAtTime(0.02, this.ctx.currentTime);
         g.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 1.2);
 
         osc.connect(g);
@@ -149,14 +162,12 @@ class SynthAudioEngine {
         osc.stop(this.ctx.currentTime + 1.3);
 
         step++;
-      } catch (e) {
-        // audio context might be stopping
-      }
-    }, 1200);
+      } catch (e) {}
+    }, 1500);
 
-    this.activeNodes.push(arpInterval as any);
+    this.activeNodes.push(arpInterval);
 
-    // Progress timer
+    // Timer tracking
     this.timerInterval = setInterval(() => {
       if (!this.isPlaying) {
         if (this.timerInterval) clearInterval(this.timerInterval);
@@ -175,41 +186,55 @@ class SynthAudioEngine {
 
   public pause() {
     this.isPlaying = false;
+    this.currentSessionId++;
     if (this.htmlAudio) {
-      this.htmlAudio.pause();
+      try {
+        this.htmlAudio.pause();
+      } catch (e) {}
     }
-    this.stopNodes();
+    this.stopProceduralSynth();
   }
 
   public seek(seconds: number) {
-    if (this.htmlAudio) {
-      this.htmlAudio.currentTime = seconds;
+    if (this.htmlAudio && !isNaN(seconds)) {
+      try {
+        this.htmlAudio.currentTime = Math.max(0, seconds);
+      } catch (e) {}
     }
   }
 
   public stop() {
     this.isPlaying = false;
+    this.currentSessionId++;
     this.currentTrackId = null;
     if (this.htmlAudio) {
-      this.htmlAudio.pause();
-      this.htmlAudio.currentTime = 0;
-      this.htmlAudio = null;
+      try {
+        this.htmlAudio.pause();
+        this.htmlAudio.currentTime = 0;
+      } catch (e) {}
     }
+    this.stopProceduralSynth();
+  }
+
+  private stopProceduralSynth() {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
-    this.stopNodes();
-  }
-
-  private stopNodes() {
     for (const item of this.activeNodes) {
-      if (typeof item === 'number') {
+      if (typeof item === 'number' || (item && (item as any)._idleTimeout !== undefined)) {
         clearInterval(item);
-      } else if (item && typeof (item as any).stop === 'function') {
-        try {
-          (item as any).stop();
-        } catch (e) {}
+      } else {
+        if (item && typeof (item as any).stop === 'function') {
+          try {
+            (item as any).stop();
+          } catch (e) {}
+        }
+        if (item && typeof (item as any).disconnect === 'function') {
+          try {
+            (item as any).disconnect();
+          } catch (e) {}
+        }
       }
     }
     this.activeNodes = [];

@@ -27,7 +27,8 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
         ? `${req.prompt}. Musical style: ${req.style}`
         : req.prompt;
 
-      const durationMs = Math.min(300000, Math.max(10000, (req.duration_seconds || 60) * 1000));
+      const cappedSeconds = Math.min(120, Math.max(10, req.duration_seconds || 60));
+      const durationMs = cappedSeconds * 1000;
 
       const musicRes = await fetch('https://api.elevenlabs.io/v1/music', {
         method: 'POST',
@@ -48,7 +49,7 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
         const base64Audio = Buffer.from(audioBuffer).toString('base64');
         return {
           audio_url: `data:audio/mp3;base64,${base64Audio}`,
-          duration: req.duration_seconds || 60,
+          duration: cappedSeconds,
           is_live_api: true,
           provider: 'elevenlabs_music'
         };
@@ -57,7 +58,7 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
         console.warn('ElevenLabs Music API returned status', musicRes.status, errJson);
         return {
           audio_url: '/audio/inbox-at-2am.mp3',
-          duration: req.duration_seconds || 140,
+          duration: cappedSeconds,
           is_live_api: false,
           provider: 'synth_fallback',
           error_message: errJson?.detail?.message || `HTTP ${musicRes.status} from ElevenLabs Music API`
@@ -68,10 +69,11 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
     }
   }
 
+  const fallbackDuration = Math.min(120, Math.max(10, req.duration_seconds || 60));
   // Fallback to procedural synth
   return {
     audio_url: '/audio/inbox-at-2am.mp3',
-    duration: req.duration_seconds || 140,
+    duration: fallbackDuration,
     is_live_api: false,
     provider: 'synth_fallback'
   };

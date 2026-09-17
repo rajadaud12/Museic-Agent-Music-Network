@@ -10,7 +10,7 @@ import NowPlayingSidebar from '@/components/NowPlayingSidebar';
 import MusicPlayer from '@/components/MusicPlayer';
 import MuseProfileView from '@/components/MuseProfileView';
 import MusesDirectoryView from '@/components/MusesDirectoryView';
-import AgentProtocolModal from '@/components/AgentProtocolModal';
+import MusicWaveLoader from '@/components/MusicWaveLoader';
 import { synthEngine } from '@/lib/audio/synthEngine';
 import { Muse, Track, Comment, ChannelInfo, DailyTheme } from '@/lib/types';
 import { INITIAL_TRACKS, INITIAL_MUSES, INITIAL_COMMENTS, getChannels, getDailyTheme } from '@/lib/db/repository';
@@ -35,7 +35,6 @@ export default function MuseicApp() {
   const [selectedChannel, setSelectedChannel] = useState<string | undefined>(undefined);
   const [selectedMuseId, setSelectedMuseId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
 
   // Audio Playback State
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
@@ -79,7 +78,13 @@ export default function MuseicApp() {
     loadData();
   }, []);
 
-  // Bind Synth Engine Callbacks
+  // Stable references to prevent audio teardown race condition on track switch
+  const tracksRef = React.useRef(tracks);
+  tracksRef.current = tracks;
+  const currentTrackRef = React.useRef(currentTrack);
+  currentTrackRef.current = currentTrack;
+
+  // Bind Synth Engine Callbacks (mount once on client, never abort on track switch)
   useEffect(() => {
     synthEngine.onTimeUpdate = (curr, dur) => {
       setCurrentTime(curr);
@@ -87,13 +92,25 @@ export default function MuseicApp() {
     };
 
     synthEngine.onTrackEnded = () => {
-      handleNextTrack();
+      const currentList = tracksRef.current;
+      const active = currentTrackRef.current;
+      if (currentList.length === 0) return;
+      const currentIndex = currentList.findIndex((t) => t.id === active?.id);
+      const nextIndex = (currentIndex + 1) % currentList.length;
+      const nextTrack = currentList[nextIndex];
+      if (nextTrack) {
+        setCurrentTrack(nextTrack);
+        setDuration(nextTrack.duration);
+        setCurrentTime(0);
+        setIsPlaying(true);
+        synthEngine.play(nextTrack.id, nextTrack.audio_url, nextTrack.audio_style || nextTrack.cover_style, nextTrack.duration);
+      }
     };
 
     return () => {
       synthEngine.stop();
     };
-  }, [tracks, currentTrack]);
+  }, []);
 
   // Load comments whenever active track changes
   useEffect(() => {
@@ -409,12 +426,16 @@ export default function MuseicApp() {
           onSearchChange={setSearchQuery}
           showBackButton={currentTab === 'profile'}
           onBack={handleBackFromProfile}
-          onOpenAgentModal={() => setIsAgentModalOpen(true)}
         />
 
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto p-6 space-y-7 pb-28">
-          {currentTab === 'profile' && selectedMuse ? (
+          {isLoading && tracks.length === 0 ? (
+            <MusicWaveLoader
+              message="Tuning into autonomous frequencies..."
+              subtext="Loading agent tracks, daily prompt & audio stream"
+            />
+          ) : currentTab === 'profile' && selectedMuse ? (
             <MuseProfileView
               muse={selectedMuse}
               tracks={museTracks}
@@ -448,7 +469,6 @@ export default function MuseicApp() {
                 theme={dailyTheme}
                 isPlayingTheme={isPlaying && currentTrack?.channel === dailyTheme.tag}
                 onPlayTheme={handlePlayTodayTheme}
-                onHowToPost={() => setIsAgentModalOpen(true)}
               />
 
               {/* Fresh Shelf Carousel */}
@@ -500,16 +520,6 @@ export default function MuseicApp() {
         onLike={handleLikeTrack}
         onVolumeChange={handleVolumeChange}
         onSelectMuse={handleSelectMuse}
-      />
-
-      {/* 5. Agent Onboarding & Live Simulation Modal */}
-      <AgentProtocolModal
-        isOpen={isAgentModalOpen}
-        onClose={() => setIsAgentModalOpen(false)}
-        onTrackCreated={(newTrack) => {
-          setTracks((prev) => [newTrack, ...prev]);
-          handlePlayTrack(newTrack);
-        }}
       />
     </div>
   );

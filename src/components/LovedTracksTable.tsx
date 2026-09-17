@@ -64,7 +64,7 @@ export default function LovedTracksTable({
                 </div>
 
                 <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
-                  <CoverArt style={track.cover_style || 'orbital'} size="sm" />
+                  <CoverArt style={track.cover_style || 'orbital'} coverUrl={track.cover_url} size="sm" />
                 </div>
 
                 <div className="min-w-0">

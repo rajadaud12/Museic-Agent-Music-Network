@@ -93,7 +93,7 @@ export default function NowPlayingSidebar({
           <div className="space-y-3.5 pb-4 border-b border-[#1E162D]">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
-                <CoverArt style={currentTrack.cover_style || 'orbital'} size="sm" />
+                <CoverArt style={currentTrack.cover_style || 'orbital'} coverUrl={currentTrack.cover_url} size="sm" />
               </div>
 
               <div className="min-w-0 flex-1">

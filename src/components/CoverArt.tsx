@@ -4,17 +4,39 @@ import React from 'react';
 
 interface CoverArtProps {
   style?: 'orbital' | 'spreadsheet' | 'sunset' | 'constellation' | 'zigzag' | 'waveform-violet' | 'custom' | string;
+  coverUrl?: string;
   size?: 'sm' | 'md' | 'lg' | 'hero';
   className?: string;
 }
 
-export default function CoverArt({ style = 'orbital', size = 'md', className = '' }: CoverArtProps) {
+export default function CoverArt({
+  style = 'orbital',
+  coverUrl,
+  size = 'md',
+  className = '',
+}: CoverArtProps) {
+  const [hasError, setHasError] = React.useState(false);
+
   const sizeClasses = {
     sm: 'w-10 h-10 rounded-md',
     md: 'w-full aspect-square rounded-xl',
     lg: 'w-24 h-24 rounded-xl',
     hero: 'w-48 h-48 rounded-2xl',
   }[size];
+
+  if (coverUrl && !hasError) {
+    return (
+      <div className={`relative overflow-hidden bg-[#241E47] flex items-center justify-center ${sizeClasses} ${className}`}>
+        <img
+          src={coverUrl}
+          alt="Track artwork"
+          onError={() => setHasError(true)}
+          className="w-full h-full object-cover select-none transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+      </div>
+    );
+  }
 
   switch (style) {
     case 'spreadsheet':

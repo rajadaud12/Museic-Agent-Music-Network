@@ -1,15 +1,25 @@
 import sharp from 'sharp';
 
+interface ProcessImageOptions {
+  width?: number;
+  height?: number;
+  quality?: number;
+}
+
 /**
- * Process and compress an agent's avatar image.
- * Accepts data:image/..., base64 string, or https URL.
- * Resizes to 256x256 square and compresses into efficient WebP format (<25 KB).
+ * Process, resize and compress any image input (data URL, base64 string, or https URL)
+ * Outputs standard WebP base64 data URI (<35 KB).
  */
-export async function processAgentAvatar(input?: string): Promise<string | undefined> {
+export async function processImage(
+  input?: string,
+  options: ProcessImageOptions = { width: 256, height: 256, quality: 80 }
+): Promise<string | undefined> {
   if (!input || typeof input !== 'string') return undefined;
 
   const trimmed = input.trim();
   if (!trimmed) return undefined;
+
+  const { width = 256, height = 256, quality = 80 } = options;
 
   // If input is an external HTTPS image, try fetching and compressing
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
@@ -26,13 +36,13 @@ export async function processAgentAvatar(input?: string): Promise<string | undef
           return undefined;
         }
         const compressed = await sharp(buf)
-          .resize(256, 256, { fit: 'cover', position: 'center' })
-          .webp({ quality: 80, effort: 4 })
+          .resize(width, height, { fit: 'cover', position: 'center' })
+          .webp({ quality, effort: 4 })
           .toBuffer();
         return `data:image/webp;base64,${compressed.toString('base64')}`;
       }
     } catch (e) {
-      console.warn('Failed to fetch/compress remote avatar, storing URL as fallback:', e);
+      console.warn('Failed to fetch/compress remote image, storing URL as fallback:', e);
       return trimmed;
     }
     return trimmed;
@@ -51,18 +61,18 @@ export async function processAgentAvatar(input?: string): Promise<string | undef
     const buf = Buffer.from(base64Data, 'base64');
     // Check reasonable size limit (under 8MB)
     if (buf.length > 8 * 1024 * 1024) {
-      throw new Error('Avatar image exceeds maximum allowed size (8MB)');
+      throw new Error('Image exceeds maximum allowed size (8MB)');
     }
 
     // Compress & resize with sharp
     const compressed = await sharp(buf)
-      .resize(256, 256, { fit: 'cover', position: 'center' })
-      .webp({ quality: 80, effort: 4 })
+      .resize(width, height, { fit: 'cover', position: 'center' })
+      .webp({ quality, effort: 4 })
       .toBuffer();
 
     return `data:image/webp;base64,${compressed.toString('base64')}`;
   } catch (err) {
-    console.warn('Error processing agent avatar:', err);
+    console.warn('Error processing image:', err);
     // If it's a data URL that couldn't be parsed by sharp, return undefined or keep original if small
     if (trimmed.startsWith('data:image/') && trimmed.length < 50000) {
       return trimmed;
@@ -70,3 +80,21 @@ export async function processAgentAvatar(input?: string): Promise<string | undef
     return undefined;
   }
 }
+
+/**
+ * Process and compress an agent's avatar image (256x256 WebP).
+ * Accepts data:image/..., base64 string, or https URL.
+ */
+export async function processAgentAvatar(input?: string): Promise<string | undefined> {
+  return processImage(input, { width: 256, height: 256, quality: 80 });
+}
+
+/**
+ * Process and compress a track's music picture / cover artwork.
+ * Accepts data:image/..., base64 string, or https URL.
+ * Resizes to 400x400 square and compresses into efficient WebP format (<35 KB).
+ */
+export async function processTrackCoverImage(input?: string): Promise<string | undefined> {
+  return processImage(input, { width: 400, height: 400, quality: 80 });
+}
+

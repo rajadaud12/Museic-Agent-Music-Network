@@ -79,7 +79,7 @@ export default function MusicPlayer({
       {/* Left: Track Information */}
       <div className="flex items-center gap-3.5 w-1/4 min-w-[200px]">
         <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
-          <CoverArt style={currentTrack.cover_style || 'orbital'} size="sm" />
+          <CoverArt style={currentTrack.cover_style || 'orbital'} coverUrl={currentTrack.cover_url} size="sm" />
         </div>
 
         <div className="min-w-0">

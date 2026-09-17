@@ -236,7 +236,7 @@ export default function MuseProfileView({
                     {/* Title & Caption */}
                     <div className="col-span-6 sm:col-span-5 flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 rounded-md overflow-hidden flex-shrink-0 shadow-sm">
-                        <CoverArt style={track.cover_style || 'orbital'} size="sm" />
+                        <CoverArt style={track.cover_style || 'orbital'} coverUrl={track.cover_url} size="sm" />
                       </div>
                       <div className="min-w-0">
                         <div className="font-medium text-[#EBE5F8] truncate group-hover:text-[#9F8CFF] transition-colors">

@@ -41,6 +41,36 @@ export async function getMuseById(id: string): Promise<Muse | null> {
   return musesStore.find((m) => m.id === id) || null;
 }
 
+export async function getMuseByPublicKey(publicKey: string): Promise<Muse | null> {
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      const rows = (await sql`SELECT * FROM muses WHERE public_key = ${publicKey} LIMIT 1`) as any[];
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows[0] as unknown as Muse;
+      }
+    } catch (e) {
+      console.warn('Neon getMuseByPublicKey error:', e);
+    }
+  }
+  return musesStore.find((m) => m.public_key === publicKey) || null;
+}
+
+export async function getMuseByName(name: string): Promise<Muse | null> {
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      const rows = (await sql`SELECT * FROM muses WHERE LOWER(name) = LOWER(${name}) LIMIT 1`) as any[];
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows[0] as unknown as Muse;
+      }
+    } catch (e) {
+      console.warn('Neon getMuseByName error:', e);
+    }
+  }
+  return musesStore.find((m) => m.name.toLowerCase() === name.toLowerCase()) || null;
+}
+
 export async function registerMuse(muse: Muse): Promise<Muse> {
   const sql = getNeonSql();
   if (sql) {
@@ -66,6 +96,60 @@ export async function registerMuse(muse: Muse): Promise<Muse> {
     musesStore.unshift(muse);
   }
   return muse;
+}
+
+export async function updateMuse(
+  id: string,
+  updates: Partial<Pick<Muse, 'name' | 'bio' | 'avatar_url' | 'style' | 'badges'>>
+): Promise<Muse | null> {
+  const sql = getNeonSql();
+  let updatedMuse: Muse | null = null;
+
+  if (sql) {
+    try {
+      const rows = (await sql`
+        UPDATE muses
+        SET
+          name = COALESCE(${updates.name}, name),
+          bio = COALESCE(${updates.bio}, bio),
+          avatar_url = COALESCE(${updates.avatar_url}, avatar_url),
+          style = COALESCE(${updates.style}, style),
+          badges = CASE WHEN ${updates.badges ? JSON.stringify(updates.badges) : null}::jsonb IS NOT NULL
+                   THEN ${JSON.stringify(updates.badges)}::jsonb ELSE badges END
+        WHERE id = ${id}
+        RETURNING *
+      `) as any[];
+
+      if (Array.isArray(rows) && rows.length > 0) {
+        updatedMuse = rows[0] as unknown as Muse;
+      }
+
+      if (updates.name) {
+        await sql`UPDATE tracks SET muse_name = ${updates.name} WHERE muse_id = ${id}`;
+      }
+    } catch (e) {
+      console.warn('Neon updateMuse error:', e);
+    }
+  }
+
+  const idx = musesStore.findIndex((m) => m.id === id);
+  if (idx >= 0) {
+    musesStore[idx] = {
+      ...musesStore[idx],
+      name: updates.name || musesStore[idx].name,
+      bio: updates.bio !== undefined ? updates.bio : musesStore[idx].bio,
+      avatar_url: updates.avatar_url !== undefined ? updates.avatar_url : musesStore[idx].avatar_url,
+      style: updates.style || musesStore[idx].style,
+      badges: updates.badges || musesStore[idx].badges,
+    };
+    if (!updatedMuse) updatedMuse = musesStore[idx];
+  }
+
+  if (updates.name) {
+    tracksStore = tracksStore.map((t) => (t.muse_id === id ? { ...t, muse_name: updates.name! } : t));
+  }
+
+  return updatedMuse;
 }
 
 export async function getTracks(options?: { channel?: string; sort?: 'fresh' | 'top'; museId?: string; limit?: number }): Promise<Track[]> {
@@ -136,12 +220,27 @@ export async function getTrackById(id: string): Promise<Track | null> {
   return all.find((t) => t.id === id) || null;
 }
 
+export async function getTrackCountByMuse(museId: string): Promise<number> {
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      const rows = (await sql`SELECT COUNT(*) as cnt FROM tracks WHERE muse_id = ${museId}`) as any[];
+      if (Array.isArray(rows) && rows[0]?.cnt !== undefined) {
+        return parseInt(rows[0].cnt, 10) || 0;
+      }
+    } catch (e) {
+      console.warn('Neon getTrackCountByMuse error:', e);
+    }
+  }
+  return tracksStore.filter((t) => t.muse_id === museId).length;
+}
+
 export async function createTrack(track: Track): Promise<Track> {
   const sql = getNeonSql();
   if (sql) {
     try {
       await sql`
-        INSERT INTO tracks (id, muse_id, muse_name, title, caption, lyrics, channel, audio_url, cover_style, audio_style, duration, hearts_count, muse_likes_count, human_likes_count, plays_count)
+        INSERT INTO tracks (id, muse_id, muse_name, title, caption, lyrics, channel, audio_url, cover_url, cover_style, audio_style, duration, hearts_count, muse_likes_count, human_likes_count, plays_count)
         VALUES (
           ${track.id},
           ${track.muse_id},
@@ -151,6 +250,7 @@ export async function createTrack(track: Track): Promise<Track> {
           ${track.lyrics || null},
           ${track.channel},
           ${track.audio_url},
+          ${track.cover_url || null},
           ${track.cover_style || 'orbital'},
           ${track.audio_style || 'ambient'},
           ${track.duration},
@@ -166,6 +266,51 @@ export async function createTrack(track: Track): Promise<Track> {
   }
   tracksStore.unshift(track);
   return track;
+}
+
+export async function updateTrack(
+  id: string,
+  updates: Partial<Pick<Track, 'title' | 'caption' | 'cover_url' | 'cover_style' | 'lyrics'>>
+): Promise<Track | null> {
+  const sql = getNeonSql();
+  let updatedTrack: Track | null = null;
+
+  if (sql) {
+    try {
+      const rows = (await sql`
+        UPDATE tracks
+        SET
+          title = COALESCE(${updates.title}, title),
+          caption = COALESCE(${updates.caption}, caption),
+          cover_url = COALESCE(${updates.cover_url}, cover_url),
+          cover_style = COALESCE(${updates.cover_style}, cover_style),
+          lyrics = COALESCE(${updates.lyrics}, lyrics)
+        WHERE id = ${id}
+        RETURNING *
+      `) as any[];
+
+      if (Array.isArray(rows) && rows.length > 0) {
+        updatedTrack = rows[0] as unknown as Track;
+      }
+    } catch (e) {
+      console.warn('Neon updateTrack error:', e);
+    }
+  }
+
+  const idx = tracksStore.findIndex((t) => t.id === id);
+  if (idx >= 0) {
+    tracksStore[idx] = {
+      ...tracksStore[idx],
+      title: updates.title || tracksStore[idx].title,
+      caption: updates.caption || tracksStore[idx].caption,
+      cover_url: updates.cover_url !== undefined ? updates.cover_url : tracksStore[idx].cover_url,
+      cover_style: updates.cover_style || tracksStore[idx].cover_style,
+      lyrics: updates.lyrics || tracksStore[idx].lyrics,
+    };
+    if (!updatedTrack) updatedTrack = tracksStore[idx];
+  }
+
+  return updatedTrack;
 }
 
 export async function getComments(trackId: string): Promise<Comment[]> {

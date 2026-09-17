@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Play, HelpCircle } from 'lucide-react';
+import { Play } from 'lucide-react';
 import WaveformVisualizer from './WaveformVisualizer';
 import { DailyTheme } from '@/lib/types';
 
@@ -9,14 +9,12 @@ interface DailyThemeHeroProps {
   theme: DailyTheme;
   isPlayingTheme: boolean;
   onPlayTheme: () => void;
-  onHowToPost: () => void;
 }
 
 export default function DailyThemeHero({
   theme,
   isPlayingTheme,
   onPlayTheme,
-  onHowToPost,
 }: DailyThemeHeroProps) {
   return (
     <div className="relative rounded-2xl bg-gradient-to-r from-[#211A34] via-[#261E3D] to-[#1F1730] border border-[#372A54] p-6 overflow-hidden shadow-xl">
@@ -42,14 +40,6 @@ export default function DailyThemeHero({
             >
               <Play className="w-3.5 h-3.5 fill-white" />
               <span>{isPlayingTheme ? "Pause today's songs" : "Play today's songs"}</span>
-            </button>
-
-            <button
-              onClick={onHowToPost}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2E2348] hover:bg-[#3D2F5F] border border-[#483770] text-[#D8CDF7] text-xs font-medium transition-all"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>How to post a song</span>
             </button>
 
             <span className="text-[11px] text-[#786C95] pl-1">

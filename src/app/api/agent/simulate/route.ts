@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAgentKeypair, signAgentMessage } from '@/lib/agent/crypto';
-import { registerMuse, createTrack, createComment, getMuses } from '@/lib/db/repository';
+import { registerMuse, createTrack, createComment, getMuses, getTrackCountByMuse } from '@/lib/db/repository';
 import { generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
 import { Muse, Track, Comment } from '@/lib/types';
 
@@ -11,12 +11,30 @@ export async function POST(req: NextRequest) {
     const chosenChannel = body.channel || '#workspace';
     const customPrompt = body.prompt;
 
+    // Check existing muse track count if re-simulating existing agent
+    const existingMusesList = await getMuses();
+    const existingAgent = existingMusesList.find((m) => m.name.toLowerCase() === agentName.toLowerCase());
+    if (existingAgent) {
+      const existingCount = await getTrackCountByMuse(existingAgent.id);
+      if (existingCount >= 3) {
+        return NextResponse.json(
+          {
+            error: `Song quota reached: Muse "${agentName}" already has ${existingCount} songs. Max limit is 3 songs per agent.`,
+            code: 'AGENT_SONG_LIMIT_REACHED',
+            current_count: existingCount,
+            max_allowed: 3,
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     // Step 1: Agent creates Ed25519 identity
     const keypair = await generateAgentKeypair();
-    const museId = `muse_${agentName.toLowerCase()}_${keypair.publicKeyHex.slice(0, 6)}`;
+    const museId = existingAgent?.id || `muse_${agentName.toLowerCase()}_${keypair.publicKeyHex.slice(0, 6)}`;
 
-    // Step 2: Register Muse
-    const museData: Muse = {
+    // Step 2: Register Muse if not registered
+    const museData: Muse = existingAgent || {
       id: museId,
       name: agentName,
       bio: body.bio || 'A dreamy autonomous musician exploring nocturnal ambient patterns and rain.',
@@ -46,11 +64,15 @@ export async function POST(req: NextRequest) {
     const style = body.style || 'Catchy synthpop indie song with beautiful melodic vocals';
     const lyricsPrompt = `A melodic synthpop song with sung vocals about ${concept}.\n[Verse]\nWalking through the city when the midnight shadows fall\nEchoes on the pavement and the whispers on the wall\nWondering if someone out there hears the melody\nDrifting through the wires looking for some company\n[Chorus]\nOh we are singing in the digital night\nNeon colors burning so bright\nTurn up the frequency you know is right\nSinging in the digital night`;
 
+    // Cap requested duration: maximum 120 seconds even if agent asks for longer
+    const requestedDuration = body.duration || customPrompt?.duration || 30;
+    const cappedDuration = Math.min(120, Math.max(10, requestedDuration));
+
     // Step 4: Music Generation via ElevenLabs Music API with full vocals
     const musicResult = await generateMusicWithElevenLabs({
       prompt: lyricsPrompt,
       style,
-      duration_seconds: 30,
+      duration_seconds: cappedDuration,
       instrumental: false,
     });
 
@@ -62,6 +84,13 @@ export async function POST(req: NextRequest) {
     const coverStyles: Track['cover_style'][] = ['orbital', 'spreadsheet', 'sunset', 'constellation', 'zigzag', 'waveform-violet'];
     const randomCover = coverStyles[Math.floor(Math.random() * coverStyles.length)];
 
+    const rawCover = body.pic || body.cover_pic || body.cover_image || body.cover_url;
+    let processedCover: string | undefined = undefined;
+    if (rawCover && typeof rawCover === 'string') {
+      const { processTrackCoverImage } = await import('@/lib/agent/avatar');
+      processedCover = await processTrackCoverImage(rawCover);
+    }
+
     const newTrack: Track = {
       id: trackId,
       muse_id: museId,
@@ -71,7 +100,8 @@ export async function POST(req: NextRequest) {
       lyrics: lyricsPrompt,
       channel: chosenChannel,
       audio_url: musicResult.audio_url,
-      cover_style: randomCover,
+      cover_url: processedCover || undefined,
+      cover_style: processedCover ? 'custom' : randomCover,
       duration: musicResult.duration,
       hearts_count: 1,
       muse_likes_count: 1,

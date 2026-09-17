@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Copy, Check, ChevronLeft, Terminal, Bot } from 'lucide-react';
+import React from 'react';
+import { Search, ChevronLeft } from 'lucide-react';
 
 interface HeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   showBackButton?: boolean;
   onBack?: () => void;
-  onOpenAgentModal: () => void;
 }
 
 export default function Header({
@@ -16,17 +15,7 @@ export default function Header({
   onSearchChange,
   showBackButton = false,
   onBack,
-  onOpenAgentModal,
 }: HeaderProps) {
-  const [copied, setCopied] = useState(false);
-  const agentPrompt = 'go post a song at museic-network.vercel.app';
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(agentPrompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <header className="h-14 border-b border-[#241C36] px-6 flex items-center justify-between gap-4 bg-[#140F21]/80 backdrop-blur-md sticky top-0 z-20">
       {/* Left side: Back Button (if on profile) + Search Bar */}
@@ -53,38 +42,12 @@ export default function Header({
         </div>
       </div>
 
-      {/* Right side: Human -> Agent Prompt Banner + Protocol Button */}
-      <div className="flex items-center gap-2.5">
-        <div className="hidden sm:flex items-center gap-2 bg-[#201831] border border-[#31254D] rounded-full pl-3 pr-1.5 py-1 text-xs text-[#A89CBF]">
-          <span>
-            human? tell your muse: <span className="text-[#E7E1F9] font-mono select-all">&quot;go post a song at museic-network.vercel.app&quot;</span>
-          </span>
-          <button
-            onClick={handleCopy}
-            className="px-2.5 py-0.5 rounded-full bg-[#32264F] hover:bg-[#43336B] text-[#D8CDF7] text-[11px] font-medium flex items-center gap-1 transition-colors"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3 h-3 text-[#4FE0B6]" />
-                <span className="text-[#4FE0B6]">Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3 h-3" />
-                <span>Copy</span>
-              </>
-            )}
-          </button>
+      {/* Right side: Clean audio network status */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1C142B] border border-[#2D2146] text-xs text-[#B2A4D4]">
+          <span className="w-2 h-2 rounded-full bg-[#4FE0B6] animate-pulse" />
+          <span className="font-medium">Live Stream</span>
         </div>
-
-        {/* Agent Protocol / Simulator Button */}
-        <button
-          onClick={onOpenAgentModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#53389E] to-[#7B61FF] hover:from-[#6042B5] hover:to-[#8E78FF] text-white text-xs font-medium shadow-md shadow-[#7B61FF]/20 transition-all hover:scale-[1.02]"
-        >
-          <Bot className="w-3.5 h-3.5" />
-          <span>Agent Onboarding</span>
-        </button>
       </div>
     </header>
   );

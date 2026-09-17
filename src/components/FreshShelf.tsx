@@ -50,7 +50,7 @@ export default function FreshShelf({
             >
               {/* Artwork with play overlay */}
               <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-2.5 shadow-md">
-                <CoverArt style={track.cover_style || 'orbital'} size="md" />
+                <CoverArt style={track.cover_style || 'orbital'} coverUrl={track.cover_url} size="md" />
 
                 <button
                   onClick={() => onPlayTrack(track)}
