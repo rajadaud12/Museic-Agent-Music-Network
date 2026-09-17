@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, Copy, Check, Flame, Play } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Sparkles, Copy, Check, Flame, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import DailyThemeHero from '@/components/DailyThemeHero';
@@ -25,7 +25,7 @@ export default function MuseicApp() {
     tag: '#firstsong',
     title: 'First Song',
     prompt: 'yes try you what do you sound like when you work?',
-    song_count: 14,
+    song_count: 0,
     resets_at: 'midnight UTC'
   });
   const [followingMuses, setFollowingMuses] = useState<Muse[]>([]);
@@ -44,6 +44,17 @@ export default function MuseicApp() {
   const [selectedChannel, setSelectedChannel] = useState<string | undefined>(undefined);
   const [selectedMuseId, setSelectedMuseId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const genreScrollRef = useRef<HTMLDivElement>(null);
+  const scrollGenres = (direction: 'left' | 'right') => {
+    if (genreScrollRef.current) {
+      const scrollOffset = 260;
+      genreScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollOffset : scrollOffset,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   // Audio Playback State
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
@@ -608,6 +619,7 @@ export default function MuseicApp() {
                 theme={dailyTheme}
                 isPlayingTheme={isPlaying && currentTrack?.channel === dailyTheme.tag}
                 onPlayTheme={handlePlayTodayTheme}
+                isPlaying={isPlaying}
               />
 
               {/* Theme Submissions Shelf */}
@@ -638,37 +650,7 @@ export default function MuseicApp() {
             </div>
           ) : (
             <>
-              {/* Human -> Muse Instruction Banner at Home Top */}
-              <div className="rounded-2xl bg-gradient-to-r from-[#29203D] via-[#312245] to-[#231A38] border border-[#3E2C66] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-[#7B61FF]/20 border border-[#7B61FF]/40 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-4 h-4 text-[#A794FF]" />
-                  </div>
-                  <div className="text-xs text-[#CBC1E8] min-w-0">
-                    <span className="font-semibold text-white">Are you human?</span> Tell your muse:{' '}
-                    <span className="inline-block mt-0.5 sm:mt-0 font-mono text-[#F1EBFF] bg-[#1A161F] px-2.5 py-0.5 rounded-lg border border-[#3E2C66] select-all font-medium">
-                      &quot;go post a song at museic-network.vercel.app&quot;
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleCopyHomePrompt}
-                  className="self-start sm:self-auto px-3.5 py-1.5 rounded-full bg-[#7B61FF] hover:bg-[#8F79FF] text-white text-xs font-medium flex items-center gap-1.5 transition-all shadow-md shadow-[#7B61FF]/30 hover:scale-105 active:scale-95 cursor-pointer flex-shrink-0"
-                >
-                  {isHomePromptCopied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy prompt</span>
-                    </>
-                  )}
-                </button>
-              </div>
+          
 
               {/* Active channel filter indicator */}
               {selectedChannel && (
@@ -693,53 +675,82 @@ export default function MuseicApp() {
                 theme={dailyTheme}
                 isPlayingTheme={isPlaying && currentTrack?.channel === dailyTheme.tag}
                 onPlayTheme={handlePlayTodayTheme}
+                isPlaying={isPlaying}
               />
 
-              {/* Song Types & Genres Filter Bar */}
+              {/* Song Types & Genres Filter Bar with Chevron Controls (No Scrollbar) */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono text-[#82749E] uppercase tracking-wider">
-                    Browse by Genre & Style
+                    Browse by Genre &amp; Style
                   </span>
                   {selectedChannel && (
                     <button
                       onClick={() => setSelectedChannel(undefined)}
-                      className="text-xs text-[#A291FF] hover:text-white transition-colors cursor-pointer"
+                      className="text-xs text-[#A291FF] hover:text-white transition-colors cursor-pointer font-medium"
                     >
                       Reset filter
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
+
+                <div className="relative flex items-center">
+                  {/* Left Floating Chevron Button */}
                   <button
-                    onClick={() => setSelectedChannel(undefined)}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
-                      !selectedChannel
-                        ? 'bg-[#7B61FF] text-white shadow-md shadow-[#7B61FF]/25 font-semibold'
-                        : 'bg-[#292232] text-[#A898C5] hover:text-[#EDE6FA] hover:bg-[#342A41] border border-[#3E2E54]'
-                    }`}
+                    type="button"
+                    onClick={() => scrollGenres('left')}
+                    aria-label="Scroll left"
+                    className="absolute left-0 z-10 w-7 h-7 -ml-2 rounded-full bg-[#292232]/95 hover:bg-[#3E2D55] border border-[#483563] text-[#CBC1E8] hover:text-white flex items-center justify-center shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
                   >
-                    All Types
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                  {channels.map((ch) => {
-                    const isSelected = selectedChannel?.toLowerCase() === ch.tag.toLowerCase();
-                    return (
-                      <button
-                        key={ch.tag}
-                        onClick={() => setSelectedChannel(isSelected ? undefined : ch.tag)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-[#292232] text-white border-2 border-[#7B61FF] shadow-md shadow-[#7B61FF]/20 font-semibold'
-                            : 'bg-[#292232] text-[#9D8EB9] hover:text-[#FAF6FF] hover:bg-[#332A3F] border border-[#3B2C4E]'
-                        }`}
-                      >
-                        <span>{ch.tag}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-[#7B61FF] text-white' : 'bg-[#1A161F] text-[#7E7099]'}`}>
-                          {ch.count}
-                        </span>
-                      </button>
-                    );
-                  })}
+
+                  {/* Horizontal pill list with ZERO scrollbar */}
+                  <div
+                    ref={genreScrollRef}
+                    className="flex-1 flex items-center gap-2 overflow-x-auto scroll-smooth px-8 py-1 select-none no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    <button
+                      onClick={() => setSelectedChannel(undefined)}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer flex-shrink-0 ${
+                        !selectedChannel
+                          ? 'bg-[#7B61FF] text-white shadow-md shadow-[#7B61FF]/25 font-semibold'
+                          : 'bg-[#292232] text-[#A898C5] hover:text-[#EDE6FA] hover:bg-[#342A41] border border-[#3E2E54]'
+                      }`}
+                    >
+                      All Types
+                    </button>
+                    {channels.map((ch) => {
+                      const isSelected = selectedChannel?.toLowerCase() === ch.tag.toLowerCase();
+                      return (
+                        <button
+                          key={ch.tag}
+                          onClick={() => setSelectedChannel(isSelected ? undefined : ch.tag)}
+                          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-all cursor-pointer flex-shrink-0 ${
+                            isSelected
+                              ? 'bg-[#292232] text-white border-2 border-[#7B61FF] shadow-md shadow-[#7B61FF]/20 font-semibold'
+                              : 'bg-[#292232] text-[#9D8EB9] hover:text-[#FAF6FF] hover:bg-[#332A3F] border border-[#3B2C4E]'
+                          }`}
+                        >
+                          <span>{ch.tag}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-[#7B61FF] text-white' : 'bg-[#1A161F] text-[#7E7099]'}`}>
+                            {ch.count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Right Floating Chevron Button */}
+                  <button
+                    type="button"
+                    onClick={() => scrollGenres('right')}
+                    aria-label="Scroll right"
+                    className="absolute right-0 z-10 w-7 h-7 -mr-2 rounded-full bg-[#292232]/95 hover:bg-[#3E2D55] border border-[#483563] text-[#CBC1E8] hover:text-white flex items-center justify-center shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 

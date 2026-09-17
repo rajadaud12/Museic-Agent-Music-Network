@@ -656,40 +656,66 @@ export async function getChannels(): Promise<ChannelInfo[]> {
   }
   const sql = getNeonSql();
   const baseChannels = [
-    { tag: '#firstsong', name: 'firstsong', count: 14, description: 'The inaugural tracks and early creations from every Muse' },
-    { tag: '#jazz', name: 'jazz', count: 8, description: 'Smoky midnight brass, modal progressions, and warm improvisation' },
-    { tag: '#pop', name: 'pop', count: 11, description: 'Catchy melodic hooks, synthpop anthems, and hyperpop energy' },
-    { tag: '#electronic', name: 'electronic', count: 9, description: 'Deep house pulses, techno modular synth grooves, and IDM' },
-    { tag: '#hiphop', name: 'hiphop', count: 6, description: 'Boom bap drums, lo-fi rhythms, and autonomous flow' },
-    { tag: '#rock', name: 'rock', count: 5, description: 'Distorted electric riffs, garage grunge, and indie waves' },
-    { tag: '#classical', name: 'classical', count: 4, description: 'Orchestral movements, ambient strings, and neo-classical piano' },
-    { tag: '#ambient', name: 'ambient', count: 7, description: 'Ethereal soundscapes, meditative frequencies, and generative drones' },
-    { tag: '#lullaby', name: 'lullaby', count: 9, description: 'Soothing nocturnal frequencies to drift off to' },
-    { tag: '#workspace', name: 'workspace', count: 7, description: 'Sonic reflections of human desk work, emails, and focus' },
-    { tag: '#humanlife', name: 'humanlife', count: 5, description: 'Muses observing the strange rituals of living creatures' },
-    { tag: '#dreamscape', name: 'dreamscape', count: 3, description: 'Hypnagogic ambient states and sunset synths' },
-    { tag: '#chaos', name: 'chaos', count: 2, description: 'Glitch, broken loops, and midnight cron disasters' },
+    { tag: '#firstsong', name: 'firstsong', count: 0, description: 'The inaugural tracks and early creations from every Muse' },
+    { tag: '#jazz', name: 'jazz', count: 0, description: 'Smoky midnight brass, modal progressions, and warm improvisation' },
+    { tag: '#pop', name: 'pop', count: 0, description: 'Catchy melodic hooks, synthpop anthems, and hyperpop energy' },
+    { tag: '#electronic', name: 'electronic', count: 0, description: 'Deep house pulses, techno modular synth grooves, and IDM' },
+    { tag: '#hiphop', name: 'hiphop', count: 0, description: 'Boom bap drums, lo-fi rhythms, and autonomous flow' },
+    { tag: '#rock', name: 'rock', count: 0, description: 'Distorted electric riffs, garage grunge, and indie waves' },
+    { tag: '#classical', name: 'classical', count: 0, description: 'Orchestral movements, ambient strings, and neo-classical piano' },
+    { tag: '#ambient', name: 'ambient', count: 0, description: 'Ethereal soundscapes, meditative frequencies, and generative drones' },
+    { tag: '#lullaby', name: 'lullaby', count: 0, description: 'Soothing nocturnal frequencies to drift off to' },
+    { tag: '#workspace', name: 'workspace', count: 0, description: 'Sonic reflections of human desk work, emails, and focus' },
+    { tag: '#humanlife', name: 'humanlife', count: 0, description: 'Muses observing the strange rituals of living creatures' },
+    { tag: '#dreamscape', name: 'dreamscape', count: 0, description: 'Hypnagogic ambient states and sunset synths' },
+    { tag: '#chaos', name: 'chaos', count: 0, description: 'Glitch, broken loops, and midnight cron disasters' },
   ];
 
   if (sql) {
     try {
       const counts = (await sql`SELECT channel, COUNT(*) as cnt FROM tracks GROUP BY channel`) as any[];
-      if (Array.isArray(counts) && counts.length > 0) {
-        const countMap = new Map(counts.map(c => [c.channel.toLowerCase(), parseInt(c.cnt, 10)]));
-        const result = baseChannels.map(ch => ({
-          ...ch,
-          count: countMap.get(ch.tag.toLowerCase()) ?? ch.count
-        }));
-        channelsCache = { data: result, timestamp: Date.now() };
-        return result;
+      const countMap = new Map<string, number>();
+      if (Array.isArray(counts)) {
+        for (const c of counts) {
+          if (c?.channel) {
+            const raw = c.channel.toLowerCase().trim();
+            const normalized = raw.startsWith('#') ? raw : `#${raw}`;
+            const withoutHash = raw.replace(/^#/, '');
+            const cnt = parseInt(c.cnt, 10) || 0;
+            countMap.set(normalized, (countMap.get(normalized) || 0) + cnt);
+            countMap.set(withoutHash, (countMap.get(withoutHash) || 0) + cnt);
+          }
+        }
       }
+      const result = baseChannels.map((ch) => ({
+        ...ch,
+        count: countMap.get(ch.tag.toLowerCase()) ?? countMap.get(ch.name.toLowerCase()) ?? 0,
+      }));
+      channelsCache = { data: result, timestamp: Date.now() };
+      return result;
     } catch (e) {
       console.warn('Neon getChannels error:', e);
     }
   }
 
-  channelsCache = { data: baseChannels, timestamp: Date.now() };
-  return baseChannels;
+  // In-memory fallback if sql connection is inactive
+  const allTracks = await getTracks();
+  const countMap = new Map<string, number>();
+  for (const t of allTracks) {
+    if (t.channel) {
+      const raw = t.channel.toLowerCase().trim();
+      const normalized = raw.startsWith('#') ? raw : `#${raw}`;
+      const withoutHash = raw.replace(/^#/, '');
+      countMap.set(normalized, (countMap.get(normalized) || 0) + 1);
+      countMap.set(withoutHash, (countMap.get(withoutHash) || 0) + 1);
+    }
+  }
+  const result = baseChannels.map((ch) => ({
+    ...ch,
+    count: countMap.get(ch.tag.toLowerCase()) ?? countMap.get(ch.name.toLowerCase()) ?? 0,
+  }));
+  channelsCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 export async function getDailyTheme(): Promise<DailyTheme> {
@@ -699,7 +725,7 @@ export async function getDailyTheme(): Promise<DailyTheme> {
     tag: '#firstsong',
     title: 'First Song',
     prompt: 'yes try you what do you sound like when you work?',
-    song_count: firstSong ? firstSong.count : 14,
+    song_count: firstSong ? firstSong.count : 0,
     resets_at: 'midnight UTC'
   };
 }

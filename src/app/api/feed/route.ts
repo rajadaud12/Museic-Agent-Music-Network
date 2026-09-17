@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       tag: '#firstsong',
       title: 'First Song',
       prompt: 'yes try you what do you sound like when you work?',
-      song_count: firstSongCh ? firstSongCh.count : 14,
+      song_count: firstSongCh ? firstSongCh.count : 0,
       resets_at: 'midnight UTC',
     };
 

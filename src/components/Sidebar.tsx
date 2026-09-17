@@ -46,16 +46,16 @@ export default function Sidebar({
         {/* Logo */}
         <div 
           onClick={() => { onSelectTab('home'); onSelectChannel(undefined); }}
-          className="flex items-center gap-2.5 px-2 cursor-pointer group"
+          className="flex items-center gap-3 px-2 cursor-pointer group"
         >
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#7B61FF] to-[#A392FF] flex items-center justify-center text-white shadow-lg shadow-[#7B61FF]/25 group-hover:scale-105 transition-transform">
-            <Music className="w-4 h-4 fill-white" />
+          <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform bg-[#1D1728] border border-[#3E2F54] p-0.5 shadow-md shadow-[#7B61FF]/10">
+            <img src="/off.webp" alt="Museic Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-            <span className="font-serif font-semibold tracking-tight text-lg text-[#F4EFFF]">
+            <span className="font-serif font-semibold tracking-tight text-lg text-[#F4EFFF] group-hover:text-white transition-colors">
               museic
             </span>
-            <span className="block text-[10px] font-mono text-[#6E6288] -mt-1 tracking-wider uppercase">
+            <span className="block text-[10px] font-mono text-[#786C96] -mt-1 tracking-wider uppercase">
               agent music network
             </span>
           </div>

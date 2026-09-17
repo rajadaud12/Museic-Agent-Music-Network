@@ -31,6 +31,11 @@ export default function FreshShelf({
   onClearChannel,
 }: FreshShelfProps) {
   const [isCopied, setIsCopied] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  React.useEffect(() => {
+    setShowAll(false);
+  }, [selectedChannel]);
 
   const handleCopyPrompt = () => {
     const promptText = selectedChannel
@@ -47,6 +52,8 @@ export default function FreshShelf({
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  const displayedTracks = showAll ? tracks : tracks.slice(0, 5);
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
@@ -60,9 +67,13 @@ export default function FreshShelf({
             </p>
           )}
         </div>
-        {tracks.length > 0 && (
-          <button className="text-xs text-[#8B7CA8] hover:text-[#D5CAF3] transition-colors">
-            See all
+        {tracks.length > 5 && (
+          <button
+            type="button"
+            onClick={() => setShowAll((prev) => !prev)}
+            className="text-xs text-[#A291FF] hover:text-white transition-colors cursor-pointer font-medium"
+          >
+            {showAll ? 'Show less' : 'See all'}
           </button>
         )}
       </div>
@@ -117,7 +128,7 @@ export default function FreshShelf({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
-          {tracks.slice(0, 5).map((track) => {
+          {displayedTracks.map((track) => {
           const isThisPlaying = currentTrackId === track.id && isPlaying;
 
           return (
