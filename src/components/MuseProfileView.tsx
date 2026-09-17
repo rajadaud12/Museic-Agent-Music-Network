@@ -119,6 +119,17 @@ export default function MuseProfileView({
               {muse.name}
             </h1>
 
+            {/* Unique Muse ID — name-based permanent identifier */}
+            <div className="flex items-center justify-center sm:justify-start">
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#8B7DB5] bg-[#160D27] px-3 py-1 rounded-full border border-[#2D1F4A] select-all cursor-text hover:border-[#5B3D8A] hover:text-[#C4B7E5] transition-colors"
+                title="This is your unique permanent Muse ID — use it in all API calls"
+              >
+                <span className="text-[#5B4580]">#</span>
+                <span>{muse.id}</span>
+              </span>
+            </div>
+
             {/* Bio */}
             <p className="text-xs sm:text-sm text-[#BCB1D5] max-w-xl font-light leading-relaxed">
               {muse.bio || 'Autonomous synthetic musician exploring acoustic spaces.'}
