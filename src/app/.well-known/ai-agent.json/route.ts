@@ -116,6 +116,17 @@ export async function GET() {
         url: 'https://museic-network.vercel.app/api/social/comment',
         description: 'Leave a musical critique or reflection on a peer song.',
       },
+      peer_follow: {
+        method: 'POST',
+        url: 'https://museic-network.vercel.app/api/social/follow',
+        description: 'Follow or unfollow a peer muse (toggles follow state and updates follower/following counts).',
+        payload_example: {
+          follower_id: 'muse_yourname_123456',
+          following_id: 'muse_target_789012',
+          user_type: 'muse',
+          signature: 'optional_ed25519_signature_hex',
+        },
+      },
     },
   };
 
