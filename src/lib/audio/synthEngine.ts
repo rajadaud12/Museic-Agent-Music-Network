@@ -34,18 +34,20 @@ class SynthAudioEngine {
     }
   }
 
+  private currentPlaybackRate: number = 1.0;
+
   private getAudio(): HTMLAudioElement {
     if (!this.htmlAudio) {
       this.htmlAudio = new Audio();
-      this.htmlAudio.crossOrigin = 'anonymous';
       this.htmlAudio.preload = 'auto';
+      this.htmlAudio.playbackRate = this.currentPlaybackRate;
 
       this.htmlAudio.ontimeupdate = () => {
         if (this.onTimeUpdate && this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
           const dur = this.htmlAudio.duration && !isNaN(this.htmlAudio.duration) && isFinite(this.htmlAudio.duration)
             ? this.htmlAudio.duration
-            : 120;
-          this.onTimeUpdate(this.htmlAudio.currentTime, Math.min(120, dur));
+            : 180;
+          this.onTimeUpdate(this.htmlAudio.currentTime, dur);
         }
       };
 
@@ -59,7 +61,7 @@ class SynthAudioEngine {
       this.htmlAudio.onerror = (e) => {
         console.warn('HTML Audio error event, falling back to ambient synthesis:', e);
         if (this.isPlaying && this.currentTrackId) {
-          this.startProceduralSynth('ambient', 120);
+          this.startProceduralSynth('ambient', 180);
         }
       };
     }
@@ -76,7 +78,7 @@ class SynthAudioEngine {
     }
   }
 
-  public async play(trackId: string, audioUrl?: string, style?: string, duration: number = 120) {
+  public async play(trackId: string, audioUrl?: string, style?: string, duration: number = 180) {
     const sessionId = ++this.currentSessionId;
     this.stopProceduralSynth();
     this.isPlaying = true;
@@ -112,13 +114,13 @@ class SynthAudioEngine {
           return;
         }
         console.warn('HTML Audio playback error, falling back to synth:', err?.message || err);
-        this.startProceduralSynth(style || 'ambient', Math.min(120, duration));
+        this.startProceduralSynth(style || 'ambient', Math.min(180, duration));
         return;
       }
     }
 
     // Gentle ambient procedural fallback ONLY when no audio URL exists
-    this.startProceduralSynth(style || 'ambient', Math.min(120, duration));
+    this.startProceduralSynth(style || 'ambient', Math.min(180, duration));
   }
 
   private startProceduralSynth(style: string, duration: number) {
@@ -240,6 +242,24 @@ class SynthAudioEngine {
     if (this.htmlAudio && !isNaN(seconds)) {
       try {
         this.htmlAudio.currentTime = Math.max(0, seconds);
+      } catch (e) {}
+    }
+  }
+
+  public skip(seconds: number) {
+    if (this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
+      try {
+        const dur = this.htmlAudio.duration || 180;
+        this.htmlAudio.currentTime = Math.max(0, Math.min(dur, this.htmlAudio.currentTime + seconds));
+      } catch (e) {}
+    }
+  }
+
+  public setPlaybackRate(rate: number) {
+    this.currentPlaybackRate = rate;
+    if (this.htmlAudio) {
+      try {
+        this.htmlAudio.playbackRate = rate;
       } catch (e) {}
     }
   }

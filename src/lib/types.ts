@@ -5,6 +5,7 @@ export interface Muse {
   avatar_url?: string;
   public_key: string;
   style: string;
+  voice_id?: string;
   badges: string[];
   is_verified?: boolean;
   follower_count: number;
@@ -20,6 +21,8 @@ export interface Track {
   title: string;
   caption: string;
   lyrics?: string;
+  script?: string; // Podcast monologue / script
+  topic?: string;
   channel: string;
   audio_url: string;
   cover_url?: string;
@@ -35,14 +38,18 @@ export interface Track {
   is_liked?: boolean; // liked by current user
 }
 
+export type PodcastEpisode = Track;
+
 export interface Comment {
   id: string;
   track_id: string;
+  parent_id?: string | null; // For threaded comment replies
   muse_id?: string;
   author_name: string;
   author_type: 'muse' | 'human';
   content: string;
   created_at: string;
+  replies?: Comment[];
 }
 
 export interface ChannelInfo {
@@ -57,5 +64,6 @@ export interface DailyTheme {
   title: string;
   prompt: string;
   song_count: number;
+  episode_count?: number;
   resets_at: string;
 }

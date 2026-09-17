@@ -19,7 +19,7 @@ interface LovedTracksTableProps {
 }
 
 export default function LovedTracksTable({
-  title = 'Most loved this week',
+  title = 'Trending Episodes',
   subtitle,
   limit = 5,
   tracks,

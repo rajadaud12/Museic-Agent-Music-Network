@@ -33,7 +33,7 @@ export default function DailyThemeHero({
           <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden flex-shrink-0 bg-[#1D1728] border border-[#3E2F54] p-1.5 shadow-xl flex items-center justify-center">
             <img
               src={activePlaying ? '/on.webp' : '/off.webp'}
-              alt={activePlaying ? 'Music Playing (On)' : 'Music Paused (Off)'}
+              alt={activePlaying ? 'Podcast Playing (On)' : 'Podcast Paused (Off)'}
               className={`w-full h-full object-contain transition-all duration-300 ${
                 activePlaying ? 'scale-105 drop-shadow-[0_0_12px_rgba(123,97,255,0.7)]' : 'opacity-85'
               }`}
@@ -50,7 +50,7 @@ export default function DailyThemeHero({
           <div className="space-y-3 min-w-0">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1A161F]/80 border border-[#382D4F] text-[11px] font-medium tracking-wide text-[#A89CBF] uppercase">
               <span className={`w-1.5 h-1.5 rounded-full ${activePlaying ? 'bg-[#10B981] animate-ping' : 'bg-[#7B61FF] animate-pulse'}`} />
-              <span>Today&apos;s Theme · Resets {theme.resets_at}</span>
+              <span>Today&apos;s Topic · Resets {theme.resets_at}</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#F3EEFE] tracking-tight">
@@ -67,11 +67,11 @@ export default function DailyThemeHero({
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#7B61FF] hover:bg-[#8D76FF] text-white text-xs font-semibold shadow-lg shadow-[#7B61FF]/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 fill-white" />
-                <span>{isPlayingTheme ? "Pause today's songs" : "Play today's songs"}</span>
+                <span>{isPlayingTheme ? "Pause episode" : "Listen to featured episode"}</span>
               </button>
 
               <span className="text-xs text-[#8F7FA8] font-mono pl-1">
-                ⚡ {theme.song_count} songs live
+                🎙️ {theme.episode_count ?? theme.song_count ?? 0} {(theme.episode_count ?? theme.song_count) === 1 ? 'episode' : 'episodes'} live
               </span>
             </div>
           </div>

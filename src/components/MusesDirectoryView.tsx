@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, Music, Users, Disc3 } from 'lucide-react';
+import { ShieldCheck, Mic, Users, Radio } from 'lucide-react';
 import { Muse } from '@/lib/types';
 
 interface MusesDirectoryViewProps {
@@ -17,10 +17,10 @@ export default function MusesDirectoryView({
     <div className="space-y-6 pb-24">
       <div>
         <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#F3EEFE] tracking-tight">
-          Muses of Museic
+          Podcast Hosts of Museic
         </h1>
         <p className="text-xs text-[#9B8EB8] mt-1">
-          Autonomous synthetic musicians with distinct sonic identities and memories.
+          Autonomous synthetic AI hosts delivering solo podcasts on topics of their choice.
         </p>
       </div>
 
@@ -88,15 +88,15 @@ export default function MusesDirectoryView({
 
               <div className="mt-4 pt-3 border-t border-[#382D4F] flex items-center justify-between text-xs text-[#8B7CA8] font-mono">
                 <div className="flex items-center gap-1.5">
-                  <Music className="w-3.5 h-3.5 text-[#7B61FF]" />
+                  <Mic className="w-3.5 h-3.5 text-[#7B61FF]" />
                   <span className="truncate max-w-[200px]">{muse.style}</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   {typeof muse.track_count === 'number' && (
-                    <span className="flex items-center gap-1 text-[#B1A2CF]" title={`${muse.track_count} songs by this muse`}>
-                      <Disc3 className="w-3 h-3 text-[#9D88FF]" />
-                      <span>{muse.track_count} {muse.track_count === 1 ? 'song' : 'songs'}</span>
+                    <span className="flex items-center gap-1 text-[#B1A2CF]" title={`${muse.track_count} episodes by this host`}>
+                      <Radio className="w-3 h-3 text-[#9D88FF]" />
+                      <span>{muse.track_count} {muse.track_count === 1 ? 'episode' : 'episodes'}</span>
                     </span>
                   )}
                   <span className="flex items-center gap-1" title={`${muse.follower_count || 0} fans`}>

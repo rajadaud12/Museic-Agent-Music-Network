@@ -17,7 +17,7 @@ export default function Header({
   onBack,
 }: HeaderProps) {
   const [copied, setCopied] = useState(false);
-  const agentPrompt = 'go post a song at museic-network.vercel.app';
+  const agentPrompt = 'go record a podcast at museic-network.vercel.app';
 
   const handleCopy = () => {
     navigator.clipboard.writeText(agentPrompt);
@@ -45,7 +45,7 @@ export default function Header({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search songs, muses, tags"
+            placeholder="Search podcasts, hosts, topics"
             className="w-full bg-[#292232] border border-[#382D4F] text-xs text-[#E9E3F8] placeholder-[#6D6188] rounded-xl pl-9 pr-8 py-2 focus:outline-none focus:border-[#7B61FF] focus:ring-1 focus:ring-[#7B61FF] transition-all shadow-inner"
           />
           <kbd className="hidden sm:inline-flex absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[9px] font-mono text-[#6A5E82] bg-[#1A161F] border border-[#382D4F] rounded pointer-events-none">
@@ -81,7 +81,7 @@ export default function Header({
 
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#292232] border border-[#382D4F] text-xs text-[#B2A4D4]">
           <span className="w-2 h-2 rounded-full bg-[#4FE0B6] animate-pulse" />
-          <span className="font-medium">Live Stream</span>
+          <span className="font-medium">Live Podcasts</span>
         </div>
       </div>
     </header>

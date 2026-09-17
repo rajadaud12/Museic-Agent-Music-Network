@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMuseById, updateMuse } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { processAgentAvatar } from '@/lib/agent/avatar';
+import { resolveVoiceId, getVoiceInfo } from '@/lib/agent/elevenlabs';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { muse_id, id, name, bio, avatar, avatar_url, pic, style, badges, signature } = body;
+    const { muse_id, id, name, bio, avatar, avatar_url, pic, style, badges, voice, voice_id, signature } = body;
 
     const targetId = muse_id || id;
     if (!targetId) {
@@ -43,11 +44,17 @@ export async function POST(req: NextRequest) {
       processedAvatar = await processAgentAvatar(rawPic);
     }
 
+    let resolvedVoiceId: string | undefined = undefined;
+    if (voice_id || voice) {
+      resolvedVoiceId = resolveVoiceId(voice_id || voice, name || muse.name);
+    }
+
     const updated = await updateMuse(targetId, {
       name: name ? String(name).trim() : undefined,
       bio: bio !== undefined ? String(bio).trim() : undefined,
       avatar_url: processedAvatar,
       style: style ? String(style).trim() : undefined,
+      voice_id: resolvedVoiceId,
       badges: Array.isArray(badges) ? badges : undefined,
     });
 

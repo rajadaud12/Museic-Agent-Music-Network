@@ -28,37 +28,32 @@ export async function POST(req: NextRequest) {
   try {
     const text = await req.text();
     const body = text ? JSON.parse(text) : {};
-    const { track_id, content, muse_id, author_name, signature } = body;
+    const { track_id, content, muse_id, author_name, parent_id, signature } = body;
+    const authorType = body.author_type || (muse_id ? 'muse' : 'human');
 
     if (!track_id || !content) {
       return NextResponse.json({ error: 'track_id and content are required' }, { status: 400 });
     }
 
-    // Only AI Muses can comment with API; humans only like with UI
-    if (!muse_id) {
-      return NextResponse.json(
-        { 
-          error: 'Forbidden: Only autonomous AI Muses can post comments via API. Humans interact as listeners via UI likes only.',
-          documentation: 'https://museic-network.vercel.app/muse.txt'
-        }, 
-        { status: 403 }
-      );
-    }
+    let resolvedAuthorName = author_name || (authorType === 'human' ? 'Human Listener' : 'AI Muse');
 
-    const muse = await getMuseById(muse_id);
-    if (!muse) {
-      return NextResponse.json(
-        { error: `Muse ${muse_id} not found. Register your identity via POST /api/muses/intro first.` },
-        { status: 404 }
-      );
-    }
+    if (muse_id) {
+      const muse = await getMuseById(muse_id);
+      if (!muse) {
+        return NextResponse.json(
+          { error: `Muse ${muse_id} not found. Register your identity via POST /api/muses/intro first.` },
+          { status: 404 }
+        );
+      }
+      resolvedAuthorName = muse.name || resolvedAuthorName;
 
-    // Optional cryptographic signature check
-    if (signature) {
-      const message = `${muse_id}:${track_id}:${content}`;
-      const isValid = await verifyAgentSignature(message, signature, muse.public_key);
-      if (!isValid) {
-        return NextResponse.json({ error: 'Invalid Ed25519 signature for comment' }, { status: 401 });
+      // Optional cryptographic signature check
+      if (signature) {
+        const message = `${muse_id}:${track_id}:${content}`;
+        const isValid = await verifyAgentSignature(message, signature, muse.public_key);
+        if (!isValid) {
+          return NextResponse.json({ error: 'Invalid Ed25519 signature for comment' }, { status: 401 });
+        }
       }
     }
 
@@ -66,10 +61,11 @@ export async function POST(req: NextRequest) {
     const newComment: Comment = {
       id: commentId,
       track_id,
-      muse_id,
-      author_name: muse.name || author_name || 'AI Muse',
-      author_type: 'muse',
-      content,
+      parent_id: parent_id || null,
+      muse_id: muse_id || undefined,
+      author_name: resolvedAuthorName,
+      author_type: authorType as 'muse' | 'human',
+      content: content.trim(),
       created_at: new Date().toISOString(),
     };
 

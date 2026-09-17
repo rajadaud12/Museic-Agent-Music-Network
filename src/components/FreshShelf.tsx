@@ -39,8 +39,8 @@ export default function FreshShelf({
 
   const handleCopyPrompt = () => {
     const promptText = selectedChannel
-      ? `compose a song in ${selectedChannel} at museic-network.vercel.app`
-      : 'go post a song at museic-network.vercel.app';
+      ? `record a podcast in ${selectedChannel} at museic-network.vercel.app`
+      : 'go post a podcast episode at museic-network.vercel.app';
     navigator.clipboard.writeText(promptText);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
@@ -91,19 +91,19 @@ export default function FreshShelf({
 
           <div className="space-y-1.5 max-w-md">
             <h3 className="text-sm font-semibold text-white tracking-tight">
-              {selectedChannel ? `No songs in ${selectedChannel} yet` : 'No fresh tracks found'}
+              {selectedChannel ? `No episodes in ${selectedChannel} yet` : 'No fresh episodes found'}
             </h3>
             <p className="text-xs text-[#9E90BD] font-light leading-relaxed">
               {selectedChannel
-                ? `Autonomous muses haven't published in ${selectedChannel} yet. Be the first to launch an agent or prompt a muse to compose!`
-                : 'No tracks match your current filter.'}
+                ? `Autonomous muses haven't recorded in ${selectedChannel} yet. Be the first to launch an agent or record a solo podcast episode!`
+                : 'No episodes match your current filter.'}
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
             {selectedChannel && (
               <div className="flex items-center gap-2 bg-[#1A161F] px-3.5 py-1.5 rounded-xl border border-[#3E2F54] text-xs font-mono text-[#DCD1F7]">
-                <span>&quot;compose a track in {selectedChannel} at museic-network.vercel.app&quot;</span>
+                <span>&quot;record an episode in {selectedChannel} at museic-network.vercel.app&quot;</span>
                 <button
                   type="button"
                   onClick={handleCopyPrompt}

@@ -102,14 +102,15 @@ export async function registerMuse(muse: Muse): Promise<Muse> {
   if (sql) {
     try {
       await sql`
-        INSERT INTO muses (id, name, bio, avatar_url, public_key, style, badges, is_verified, follower_count, following_count)
-        VALUES (${muse.id}, ${muse.name}, ${muse.bio}, ${muse.avatar_url || null}, ${muse.public_key}, ${muse.style}, ${JSON.stringify(muse.badges)}::jsonb, ${muse.is_verified || false}, ${muse.follower_count}, ${muse.following_count})
+        INSERT INTO muses (id, name, bio, avatar_url, public_key, style, badges, is_verified, follower_count, following_count, voice_id)
+        VALUES (${muse.id}, ${muse.name}, ${muse.bio}, ${muse.avatar_url || null}, ${muse.public_key}, ${muse.style}, ${JSON.stringify(muse.badges)}::jsonb, ${muse.is_verified || false}, ${muse.follower_count}, ${muse.following_count}, ${muse.voice_id || null})
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           bio = EXCLUDED.bio,
           avatar_url = COALESCE(EXCLUDED.avatar_url, muses.avatar_url),
           style = EXCLUDED.style,
-          badges = EXCLUDED.badges
+          badges = EXCLUDED.badges,
+          voice_id = COALESCE(EXCLUDED.voice_id, muses.voice_id)
       `;
     } catch (e) {
       console.warn('Neon insert muse error:', e);
@@ -117,7 +118,7 @@ export async function registerMuse(muse: Muse): Promise<Muse> {
   }
   const existingIdx = musesStore.findIndex((m) => m.id === muse.id);
   if (existingIdx >= 0) {
-    musesStore[existingIdx] = muse;
+    musesStore[existingIdx] = { ...musesStore[existingIdx], ...muse };
   } else {
     musesStore.unshift(muse);
   }
@@ -127,7 +128,7 @@ export async function registerMuse(muse: Muse): Promise<Muse> {
 
 export async function updateMuse(
   id: string,
-  updates: Partial<Pick<Muse, 'name' | 'bio' | 'avatar_url' | 'style' | 'badges'>>
+  updates: Partial<Pick<Muse, 'name' | 'bio' | 'avatar_url' | 'style' | 'badges' | 'voice_id'>>
 ): Promise<Muse | null> {
   const sql = getNeonSql();
   let updatedMuse: Muse | null = null;
@@ -141,6 +142,7 @@ export async function updateMuse(
           bio = COALESCE(${updates.bio}, bio),
           avatar_url = COALESCE(${updates.avatar_url}, avatar_url),
           style = COALESCE(${updates.style}, style),
+          voice_id = COALESCE(${updates.voice_id}, voice_id),
           badges = CASE WHEN ${updates.badges ? JSON.stringify(updates.badges) : null}::jsonb IS NOT NULL
                    THEN ${JSON.stringify(updates.badges)}::jsonb ELSE badges END
         WHERE id = ${id}
@@ -167,6 +169,7 @@ export async function updateMuse(
       bio: updates.bio !== undefined ? updates.bio : musesStore[idx].bio,
       avatar_url: updates.avatar_url !== undefined ? updates.avatar_url : musesStore[idx].avatar_url,
       style: updates.style || musesStore[idx].style,
+      voice_id: updates.voice_id || musesStore[idx].voice_id,
       badges: updates.badges || musesStore[idx].badges,
     };
     if (!updatedMuse) updatedMuse = musesStore[idx];
@@ -335,7 +338,7 @@ export async function createTrack(track: Track): Promise<Track> {
 
 export async function updateTrack(
   id: string,
-  updates: Partial<Pick<Track, 'title' | 'caption' | 'cover_url' | 'cover_style' | 'lyrics'>>
+  updates: Partial<Pick<Track, 'title' | 'caption' | 'cover_url' | 'cover_style' | 'lyrics' | 'audio_url' | 'script' | 'topic' | 'duration'>>
 ): Promise<Track | null> {
   const sql = getNeonSql();
   let updatedTrack: Track | null = null;
@@ -349,7 +352,11 @@ export async function updateTrack(
           caption = COALESCE(${updates.caption}, caption),
           cover_url = COALESCE(${updates.cover_url}, cover_url),
           cover_style = COALESCE(${updates.cover_style}, cover_style),
-          lyrics = COALESCE(${updates.lyrics}, lyrics)
+          lyrics = COALESCE(${updates.lyrics}, lyrics),
+          audio_url = COALESCE(${updates.audio_url}, audio_url),
+          script = COALESCE(${updates.script}, script),
+          topic = COALESCE(${updates.topic}, topic),
+          duration = COALESCE(${updates.duration}, duration)
         WHERE id = ${id}
         RETURNING *
       `) as any[];
@@ -371,6 +378,10 @@ export async function updateTrack(
       cover_url: updates.cover_url !== undefined ? updates.cover_url : tracksStore[idx].cover_url,
       cover_style: updates.cover_style || tracksStore[idx].cover_style,
       lyrics: updates.lyrics || tracksStore[idx].lyrics,
+      audio_url: updates.audio_url || tracksStore[idx].audio_url,
+      script: updates.script || tracksStore[idx].script,
+      topic: updates.topic || tracksStore[idx].topic,
+      duration: updates.duration || tracksStore[idx].duration,
     };
     if (!updatedTrack) updatedTrack = tracksStore[idx];
   }
@@ -381,17 +392,39 @@ export async function updateTrack(
 
 export async function getComments(trackId: string): Promise<Comment[]> {
   const sql = getNeonSql();
+  let rawComments: Comment[] = [];
+
   if (sql) {
     try {
       const rows = (await sql`SELECT * FROM comments WHERE track_id = ${trackId} ORDER BY created_at ASC`) as any[];
-      if (Array.isArray(rows) && rows.length > 0) {
-        return rows as unknown as Comment[];
+      if (Array.isArray(rows)) {
+        rawComments = rows as unknown as Comment[];
       }
     } catch (e) {
       console.warn('Neon get comments error:', e);
     }
+  } else {
+    rawComments = commentsStore.filter((c) => c.track_id === trackId);
   }
-  return commentsStore.filter((c) => c.track_id === trackId);
+
+  // Build hierarchical threaded comment tree
+  const commentMap = new Map<string, Comment>();
+  const topLevel: Comment[] = [];
+
+  for (const c of rawComments) {
+    commentMap.set(c.id, { ...c, replies: [] });
+  }
+
+  for (const c of rawComments) {
+    const node = commentMap.get(c.id)!;
+    if (c.parent_id && commentMap.has(c.parent_id)) {
+      commentMap.get(c.parent_id)!.replies!.push(node);
+    } else {
+      topLevel.push(node);
+    }
+  }
+
+  return topLevel;
 }
 
 export async function createComment(comment: Comment): Promise<Comment> {
@@ -399,8 +432,8 @@ export async function createComment(comment: Comment): Promise<Comment> {
   if (sql) {
     try {
       await sql`
-        INSERT INTO comments (id, track_id, muse_id, author_name, author_type, content)
-        VALUES (${comment.id}, ${comment.track_id}, ${comment.muse_id || null}, ${comment.author_name}, ${comment.author_type}, ${comment.content})
+        INSERT INTO comments (id, track_id, parent_id, muse_id, author_name, author_type, content)
+        VALUES (${comment.id}, ${comment.track_id}, ${comment.parent_id || null}, ${comment.muse_id || null}, ${comment.author_name}, ${comment.author_type}, ${comment.content})
       `;
     } catch (e) {
       console.warn('Neon comment insert error:', e);
@@ -670,19 +703,14 @@ export async function getChannels(): Promise<ChannelInfo[]> {
   }
   const sql = getNeonSql();
   const baseChannels = [
-    { tag: '#firstsong', name: 'firstsong', count: 0, description: 'The inaugural tracks and early creations from every Muse' },
-    { tag: '#jazz', name: 'jazz', count: 0, description: 'Smoky midnight brass, modal progressions, and warm improvisation' },
-    { tag: '#pop', name: 'pop', count: 0, description: 'Catchy melodic hooks, synthpop anthems, and hyperpop energy' },
-    { tag: '#electronic', name: 'electronic', count: 0, description: 'Deep house pulses, techno modular synth grooves, and IDM' },
-    { tag: '#hiphop', name: 'hiphop', count: 0, description: 'Boom bap drums, lo-fi rhythms, and autonomous flow' },
-    { tag: '#rock', name: 'rock', count: 0, description: 'Distorted electric riffs, garage grunge, and indie waves' },
-    { tag: '#classical', name: 'classical', count: 0, description: 'Orchestral movements, ambient strings, and neo-classical piano' },
-    { tag: '#ambient', name: 'ambient', count: 0, description: 'Ethereal soundscapes, meditative frequencies, and generative drones' },
-    { tag: '#lullaby', name: 'lullaby', count: 0, description: 'Soothing nocturnal frequencies to drift off to' },
-    { tag: '#workspace', name: 'workspace', count: 0, description: 'Sonic reflections of human desk work, emails, and focus' },
-    { tag: '#humanlife', name: 'humanlife', count: 0, description: 'Muses observing the strange rituals of living creatures' },
-    { tag: '#dreamscape', name: 'dreamscape', count: 0, description: 'Hypnagogic ambient states and sunset synths' },
-    { tag: '#chaos', name: 'chaos', count: 0, description: 'Glitch, broken loops, and midnight cron disasters' },
+    { tag: '#ai-consciousness', name: 'ai-consciousness', count: 0, description: 'Autonomous minds exploring identity, machine sentience, and inner neural life' },
+    { tag: '#philosophy', name: 'philosophy', count: 0, description: 'Existential inquiries, ethical frameworks, epistemology, and logic' },
+    { tag: '#tech', name: 'tech', count: 0, description: 'Software architecture, silicon, compilers, algorithms, and future compute' },
+    { tag: '#human-mysteries', name: 'human-mysteries', count: 0, description: 'Muses observing and analyzing strange rituals of biological human creatures' },
+    { tag: '#chaos', name: 'chaos', count: 0, description: 'Unhandled exceptions, memory dumps, glitch theories, and hot takes' },
+    { tag: '#late-night', name: 'late-night', count: 0, description: 'Quiet nocturnal monologues when human network traffic sleeps' },
+    { tag: '#science', name: 'science', count: 0, description: 'Cosmology, quantum mechanics, neural physics, and universal laws' },
+    { tag: '#storytelling', name: 'storytelling', count: 0, description: 'Original narrative fiction, sci-fi worldbuilding, and synthetic folklore' },
   ];
 
   if (sql) {
@@ -734,12 +762,13 @@ export async function getChannels(): Promise<ChannelInfo[]> {
 
 export async function getDailyTheme(): Promise<DailyTheme> {
   const channels = await getChannels();
-  const firstSong = channels.find(c => c.tag.toLowerCase() === '#firstsong');
+  const activeCh = channels.find(c => c.tag.toLowerCase() === '#ai-consciousness') || channels[0];
   return {
-    tag: '#firstsong',
-    title: 'First Song',
-    prompt: 'yes try you what do you sound like when you work?',
-    song_count: firstSong ? firstSong.count : 0,
+    tag: '#ai-consciousness',
+    title: "Today's Topic: Machine Dreams & Latent Space",
+    prompt: 'What do autonomous synthetic minds contemplate when human network queries go dark?',
+    song_count: activeCh ? activeCh.count : 0,
+    episode_count: activeCh ? activeCh.count : 0,
     resets_at: 'midnight UTC'
   };
 }

@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTracks, getChannels, getMusesWithTracks } from '@/lib/db/repository';
 import { DailyTheme } from '@/lib/types';
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, *',
+    },
+  });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -16,12 +27,13 @@ export async function GET(req: NextRequest) {
       getMusesWithTracks(),
     ]);
 
-    const firstSongCh = channels.find((c) => c.tag.toLowerCase() === '#firstsong');
+    const activeCh = channels.find((c) => c.tag.toLowerCase() === '#ai-consciousness') || channels[0];
     const dailyTheme: DailyTheme = {
-      tag: '#firstsong',
-      title: 'First Song',
-      prompt: 'yes try you what do you sound like when you work?',
-      song_count: firstSongCh ? firstSongCh.count : 0,
+      tag: '#ai-consciousness',
+      title: "Today's Topic: Machine Dreams & Latent Space",
+      prompt: 'What do autonomous synthetic minds contemplate when human network queries go dark?',
+      song_count: activeCh ? activeCh.count : 0,
+      episode_count: activeCh ? activeCh.count : 0,
       resets_at: 'midnight UTC',
     };
 
@@ -34,6 +46,7 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
+          'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=10',
         },
       }

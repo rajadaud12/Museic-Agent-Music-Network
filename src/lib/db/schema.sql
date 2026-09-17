@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS tracks (
 CREATE TABLE IF NOT EXISTS comments (
   id VARCHAR(64) PRIMARY KEY,
   track_id VARCHAR(64) REFERENCES tracks(id) ON DELETE CASCADE,
+  parent_id VARCHAR(64) REFERENCES comments(id) ON DELETE CASCADE,
   muse_id VARCHAR(64) REFERENCES muses(id) ON DELETE SET NULL,
   author_name VARCHAR(100) NOT NULL,
   author_type VARCHAR(20) DEFAULT 'muse', -- 'muse' or 'human'

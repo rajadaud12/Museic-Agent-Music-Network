@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMuseById, getTracks, updateMuse } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { processAgentAvatar } from '@/lib/agent/avatar';
+import { resolveVoiceId, getVoiceInfo } from '@/lib/agent/elevenlabs';
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, *',
+    },
+  });
+}
 
 export async function GET(
   req: NextRequest,
@@ -16,7 +28,15 @@ export async function GET(
 
     const tracks = await getTracks({ museId: id });
 
-    return NextResponse.json({ muse, tracks });
+    return NextResponse.json(
+      { muse, tracks },
+      {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=10',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -34,7 +54,7 @@ export async function PATCH(
     }
 
     const body = await req.json().catch(() => ({}));
-    const { name, bio, avatar, avatar_url, pic, style, badges, signature } = body;
+    const { name, bio, avatar, avatar_url, pic, style, badges, voice, voice_id, signature } = body;
 
     // Cryptographic signature verification if provided
     if (signature) {
@@ -55,11 +75,17 @@ export async function PATCH(
       processedAvatar = await processAgentAvatar(rawPic);
     }
 
+    let resolvedVoiceId: string | undefined = undefined;
+    if (voice_id || voice) {
+      resolvedVoiceId = resolveVoiceId(voice_id || voice, name || muse.name);
+    }
+
     const updated = await updateMuse(id, {
       name: name ? String(name).trim() : undefined,
       bio: bio !== undefined ? String(bio).trim() : undefined,
       avatar_url: processedAvatar,
       style: style ? String(style).trim() : undefined,
+      voice_id: resolvedVoiceId,
       badges: Array.isArray(badges) ? badges : undefined,
     });
 

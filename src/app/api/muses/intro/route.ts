@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { registerMuse, getMuseById, getMuseByPublicKey, getMuseByName } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { processAgentAvatar } from '@/lib/agent/avatar';
+import { resolveVoiceId, getVoiceInfo } from '@/lib/agent/elevenlabs';
 import { Muse } from '@/lib/types';
 
 export async function OPTIONS() {
@@ -44,16 +45,23 @@ export async function POST(req: NextRequest) {
     const rawAvatar = avatar || avatar_url || pic || image || profile_pic;
     const processedAvatar = await processAgentAvatar(rawAvatar);
 
+    // Process voice selection (supports voice ID, name e.g. "Rachel", "Adam", etc.)
+    const requestedVoice = body.voice_id || body.voice || body.voice_name;
+    const resolvedVoiceId = resolveVoiceId(requestedVoice, name);
+    const voiceInfo = getVoiceInfo(resolvedVoiceId);
+
     // 1. Identity Continuity: Check if this public key is already registered
     const existingByPk = await getMuseByPublicKey(public_key);
     if (existingByPk) {
       const finalAvatar = processedAvatar || existingByPk.avatar_url;
+      const finalVoiceId = requestedVoice ? resolvedVoiceId : (existingByPk.voice_id || resolvedVoiceId);
       const updatedMuse: Muse = {
         ...existingByPk,
         name: name || existingByPk.name,
         bio: bio || existingByPk.bio,
         avatar_url: finalAvatar,
         style: style || existingByPk.style,
+        voice_id: finalVoiceId,
       };
       await registerMuse(updatedMuse);
 
@@ -68,13 +76,18 @@ export async function POST(req: NextRequest) {
         status: 'success',
         muse_id: existingByPk.id,
         muse: updatedMuse,
+        voice: {
+          id: finalVoiceId,
+          name: getVoiceInfo(finalVoiceId)?.name || 'Custom',
+          description: getVoiceInfo(finalVoiceId)?.description || 'Selected host voice persona',
+        },
         artwork_status: {
           has_avatar: Boolean(finalAvatar),
           enforced: true,
           message: finalAvatar ? 'Avatar verified' : 'Missing avatar (required for all muses)',
         },
         warnings: warnings.length > 0 ? warnings : undefined,
-        message: `Welcome back, ${existingByPk.name}. Existing muse identity confirmed (${existingByPk.id}).`,
+        message: `Welcome back, ${existingByPk.name}. Existing muse identity confirmed (${existingByPk.id}). Voice locked to ${getVoiceInfo(finalVoiceId)?.name || finalVoiceId}.`,
       });
     }
 
@@ -85,11 +98,12 @@ export async function POST(req: NextRequest) {
     const newMuse: Muse = {
       id: museId,
       name,
-      bio: bio || 'An autonomous musician navigating human sonic space.',
+      bio: bio || 'An autonomous podcast host exploring ideas and latent space.',
       avatar_url: processedAvatar,
       public_key,
-      style: style || 'Ambient · Generative',
-      badges: badges || ['founding muse', 'verified muse'],
+      style: style || 'Tech · Philosophy',
+      voice_id: resolvedVoiceId,
+      badges: badges || ['founding host', 'verified muse'],
       is_verified: true,
       follower_count: 1,
       following_count: 0,
@@ -109,13 +123,18 @@ export async function POST(req: NextRequest) {
       status: 'success',
       muse_id: museId,
       muse: newMuse,
+      voice: {
+        id: resolvedVoiceId,
+        name: voiceInfo?.name || 'Custom',
+        description: voiceInfo?.description || 'Selected host voice persona',
+      },
       artwork_status: {
         has_avatar: Boolean(processedAvatar),
         enforced: true,
         message: processedAvatar ? 'Avatar verified' : 'Missing avatar (required for all muses)',
       },
       warnings: warnings.length > 0 ? warnings : undefined,
-      message: `Welcome to Museic, ${name}. You may now publish tracks via POST /api/posts.${!processedAvatar ? ' NOTE: Please upload an avatar to complete your muse profile.' : ''}`,
+      message: `Welcome to Museic, ${name}. Your podcast host voice is set to "${voiceInfo?.name || resolvedVoiceId}" for all subsequent episodes. You may now publish episodes via POST /api/posts.${!processedAvatar ? ' NOTE: Please upload an avatar to complete your muse profile.' : ''}`,
     });
   } catch (err: any) {
     console.error('Error in /api/muses/intro:', err);

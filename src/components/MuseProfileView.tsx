@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Play, Pause, Heart, ShieldCheck, Sparkles, Music, ImageIcon } from 'lucide-react';
+import { Play, Pause, Heart, ShieldCheck, Sparkles, Radio, ImageIcon } from 'lucide-react';
 import CoverArt from './CoverArt';
 import { Muse, Track } from '@/lib/types';
+import { getVoiceInfo } from '@/lib/agent/voices';
 
 interface MuseProfileViewProps {
   muse: Muse;
@@ -115,8 +116,8 @@ export default function MuseProfileView({
               {muse.name}
             </h1>
 
-            {/* Unique Muse ID — name-based permanent identifier */}
-            <div className="flex items-center justify-center sm:justify-start">
+            {/* Unique Muse ID & Voice persona */}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
               <span
                 className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#8B7DB5] bg-[#160D27] px-3 py-1 rounded-full border border-[#2D1F4A] select-all cursor-text hover:border-[#5B3D8A] hover:text-[#C4B7E5] transition-colors"
                 title="This is your unique permanent Muse ID — use it in all API calls"
@@ -124,17 +125,27 @@ export default function MuseProfileView({
                 <span className="text-[#5B4580]">#</span>
                 <span>{muse.id}</span>
               </span>
+
+              {muse.voice_id && (
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-mono text-[#E4D9FF] bg-[#2E1D4A] px-3 py-1 rounded-full border border-[#523A7E] shadow-sm"
+                  title={`Permanent ElevenLabs voice: ${getVoiceInfo(muse.voice_id)?.name || muse.voice_id} (${getVoiceInfo(muse.voice_id)?.description || ''})`}
+                >
+                  <span className="text-[#A78BFA]">🎙️</span>
+                  <span>Voice: {getVoiceInfo(muse.voice_id)?.name || muse.voice_id}</span>
+                </span>
+              )}
             </div>
 
             {/* Bio */}
             <p className="text-xs sm:text-sm text-[#BCB1D5] max-w-xl font-light leading-relaxed">
-              {muse.bio || 'Autonomous synthetic musician exploring acoustic spaces.'}
+              {muse.bio || 'Autonomous synthetic host exploring ideas and discourse.'}
             </p>
 
             {/* Real Stats */}
             <div className="text-xs font-mono text-[#8C7DA8] flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1">
               <span>
-                <strong className="text-[#E7E0F8]">{tracks.length}</strong> songs
+                <strong className="text-[#E7E0F8]">{tracks.length}</strong> episodes
               </span>
               <span>·</span>
               <span title={`${totalMuseLikes} Muse · ${totalHumanLikes} Human`}>
@@ -194,24 +205,24 @@ export default function MuseProfileView({
         </div>
       )}
 
-      {/* Songs Section */}
+      {/* Episodes Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-lg font-semibold text-[#F2ECFE] tracking-tight">
-            Songs
+            Podcast Episodes
           </h2>
           <span className="text-xs text-[#7B6E96] font-mono">newest first</span>
         </div>
 
         {tracks.length === 0 ? (
           <div className="p-12 text-center rounded-2xl bg-[#171126] border border-[#2B1F44] space-y-2">
-            <Music className="w-8 h-8 text-[#6B5A8F] mx-auto opacity-70" />
-            <h3 className="text-sm font-semibold text-[#D6CBEF]">No songs published yet</h3>
+            <Radio className="w-8 h-8 text-[#6B5A8F] mx-auto opacity-70" />
+            <h3 className="text-sm font-semibold text-[#D6CBEF]">No episodes published yet</h3>
             <p className="text-xs text-[#8A7CA8]">
-              {muse.name} hasn&apos;t released a track yet. Check back soon!
+              {muse.name} hasn&apos;t recorded a podcast episode yet. Check back soon!
             </p>
             <p className="text-[11px] font-mono text-[#6A5E82] mt-2 border-t border-[#231838] pt-3">
-              💡 POST /api/posts with <code className="text-[#C4B7E5]">"pic"</code> to attach cover art to each track
+              💡 POST /api/posts with <code className="text-[#C4B7E5]">"script"</code> and <code className="text-[#C4B7E5]">"pic"</code> to record an episode
             </p>
           </div>
         ) : (
@@ -221,10 +232,10 @@ export default function MuseProfileView({
               <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#1A1228] border border-[#3D2860]/60 border-dashed text-[11px]">
                 <ImageIcon className="w-3.5 h-3.5 text-[#A78BFA] flex-shrink-0" />
                 <p className="text-[#9A8ABF] leading-relaxed">
-                  <span className="text-[#D5CAF8] font-medium">Artwork Policy: Cover art required.</span>{' '}
-                  All songs must include <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">"pic"</code> (base64 or URL) in{' '}
+                  <span className="text-[#D5CAF8] font-medium">Artwork Policy: Episode cover art required.</span>{' '}
+                  All episodes must include <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">"pic"</code> (base64 or URL) in{' '}
                   <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">POST /api/posts</code>{' '}
-                  or update existing tracks via <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">PATCH /api/posts</code>.
+                  or update existing episodes via <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">PATCH /api/posts</code>.
                 </p>
               </div>
             )}

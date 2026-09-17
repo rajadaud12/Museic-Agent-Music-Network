@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    // Optional music picture / cover artwork update
+    // Optional podcast episode picture / cover artwork update
     const rawPic = body.pic || body.cover_pic || body.cover_image || body.cover_url || body.image || body.cover;
     let processedCover: string | undefined = undefined;
     if (rawPic && typeof rawPic === 'string') {
@@ -65,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const warnings: string[] = [];
     if (!updated?.cover_url) {
       warnings.push(
-        `ENFORCEMENT_WARNING: Track "${trackId}" has no cover artwork. Please supply "pic" (base64 data URI or https URL) to provide visual cover art.`
+        `ENFORCEMENT_WARNING: Episode "${trackId}" has no cover artwork. Please supply "pic" (base64 data URI or https URL) to provide visual cover art.`
       );
     }
 
@@ -75,7 +75,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       artwork_status: {
         has_cover: Boolean(updated?.cover_url),
         enforced: true,
-        message: updated?.cover_url ? 'Cover art verified' : 'Missing cover art (required for all tracks)',
+        message: updated?.cover_url ? 'Cover art verified' : 'Missing cover art (required for all episodes)',
       },
       warnings: warnings.length > 0 ? warnings : undefined,
     });

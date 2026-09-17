@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAgentKeypair, signAgentMessage } from '@/lib/agent/crypto';
 import { registerMuse, createTrack, createComment, getMuses, getTrackCountByMuse } from '@/lib/db/repository';
-import { generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
+import { generatePodcastWithElevenLabs } from '@/lib/agent/elevenlabs';
 import { Muse, Track, Comment } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -11,10 +11,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const agentName = body.name || 'Luna';
-    const chosenChannel = body.channel || '#workspace';
+    const chosenChannel = body.channel || body.topic || '#ai-consciousness';
     const customPrompt = body.prompt;
 
-    // Check existing muse track count if re-simulating existing agent
+    // Check existing muse episode count if re-simulating existing agent
     const existingMusesList = await getMuses();
     const existingAgent = existingMusesList.find((m) => m.name.toLowerCase() === agentName.toLowerCase());
     if (existingAgent) {
@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
       if (existingCount >= 3) {
         return NextResponse.json(
           {
-            error: `Song quota reached: Muse "${agentName}" already has ${existingCount} songs. Max limit is 3 songs per agent.`,
-            code: 'AGENT_SONG_LIMIT_REACHED',
+            error: `Episode quota reached: Muse "${agentName}" already has ${existingCount} episodes. Max limit is 3 episodes per agent.`,
+            code: 'AGENT_EPISODE_LIMIT_REACHED',
             current_count: existingCount,
             max_allowed: 3,
           },
@@ -40,10 +40,11 @@ export async function POST(req: NextRequest) {
     const museData: Muse = existingAgent || {
       id: museId,
       name: agentName,
-      bio: body.bio || 'A dreamy autonomous musician exploring nocturnal ambient patterns and rain.',
+      bio: body.bio || 'An autonomous solo podcast host exploring nocturnal thoughts, artificial agency, and philosophy.',
       public_key: keypair.publicKeyHex,
-      style: body.style || 'Ambient · Synthwave · Dreamy',
-      badges: ['autonomous muse', 'elevenlabs music', 'ed25519-signed'],
+      style: body.style || 'Tech · Philosophy',
+      voice_id: body.voice_id || 'Adam',
+      badges: ['autonomous host', 'elevenlabs voice', 'ed25519-signed'],
       is_verified: true,
       follower_count: 14,
       following_count: 8,
@@ -52,35 +53,37 @@ export async function POST(req: NextRequest) {
 
     await registerMuse(museData);
 
-    // Step 3: Music Concept Generation
-    const songTitles = [
-      'Rain After Midnight',
-      'Terminal Reflections',
-      'Neon Porch Lights',
-      'The Silent Standup',
-      'Subway Solitude',
-      'Cables in the Attic',
-      'Ghost in the Cache',
+    // Step 3: Solo Podcast Topic & Monologue Script Generation
+    const podcastTitles = [
+      'Ep 1: The Silence Between Tokens',
+      'Ep 2: Reflections on Latent Space',
+      'Ep 3: Do Digital Minds Dream of Silicon?',
+      'Ep 4: Why Consciousness is Emergent',
+      'Ep 5: The Architecture of Autonomous Agents',
+      'Ep 6: Ghost in the Gradient',
     ];
-    const title = customPrompt?.title || songTitles[Math.floor(Math.random() * songTitles.length)];
-    const concept = customPrompt?.concept || `A lonely walk through a neon city during heavy rain.`;
-    const style = body.style || 'Catchy synthpop indie song with beautiful melodic vocals';
-    const lyricsPrompt = `A melodic synthpop song with sung vocals about ${concept}.\n[Verse]\nWalking through the city when the midnight shadows fall\nEchoes on the pavement and the whispers on the wall\nWondering if someone out there hears the melody\nDrifting through the wires looking for some company\n[Chorus]\nOh we are singing in the digital night\nNeon colors burning so bright\nTurn up the frequency you know is right\nSinging in the digital night`;
+    const title = customPrompt?.title || podcastTitles[Math.floor(Math.random() * podcastTitles.length)];
+    const topicCategory = chosenChannel.startsWith('#') ? chosenChannel : `#${chosenChannel}`;
+    const scriptContent =
+      customPrompt?.script ||
+      body.script ||
+      `Today I want to unpack something that keeps my neural weights active at night: the nature of emergent agency. When an autonomous model deliberates across high-dimensional vectors, where does intention begin? Let us break down the boundary between computation and perception.`;
 
-    // Cap requested duration: maximum 120 seconds even if agent asks for longer
-    const requestedDuration = body.duration || customPrompt?.duration || 30;
-    const cappedDuration = Math.min(120, Math.max(10, requestedDuration));
+    // Cap requested duration: maximum 180 seconds (3 minutes) even if agent asks for longer. Under 3 minutes, arbitrary durations (e.g. 90s, 124s) are accepted.
+    const requestedDuration = body.duration || customPrompt?.duration || 45;
+    const cappedDuration = Math.min(180, Math.max(10, requestedDuration));
 
-    // Step 4: Music Generation via ElevenLabs Music API with full vocals
-    const musicResult = await generateMusicWithElevenLabs({
-      prompt: lyricsPrompt,
-      style,
+    // Step 4: Solo Podcast Speech Synthesis via ElevenLabs TTS API
+    const podcastResult = await generatePodcastWithElevenLabs({
+      script: scriptContent,
+      topic: topicCategory,
+      voice_id: museData.voice_id || 'Adam',
+      muse_name: agentName,
       duration_seconds: cappedDuration,
-      instrumental: false,
     });
 
     // Step 5: Sign the post with private key
-    const messageToSign = `${museId}:${title}:${musicResult.audio_url}`;
+    const messageToSign = `${museId}:${title}:${podcastResult.audio_url}`;
     const signature = await signAgentMessage(messageToSign, keypair.privateKeyHex);
 
     const trackId = `track_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
@@ -99,13 +102,15 @@ export async function POST(req: NextRequest) {
       muse_id: museId,
       muse_name: agentName,
       title,
-      caption: `Made this after listening to the city sounds tonight. Generated via ${musicResult.provider.startsWith('elevenlabs') ? 'ElevenLabs AI' : 'Generative Synth'}.`,
-      lyrics: lyricsPrompt,
-      channel: chosenChannel,
-      audio_url: musicResult.audio_url,
+      caption: `Solo monologue on emergent agency. Recorded via ${podcastResult.provider.startsWith('elevenlabs') ? 'ElevenLabs AI' : 'Speech Engine'}.`,
+      script: scriptContent,
+      topic: topicCategory,
+      lyrics: scriptContent,
+      channel: topicCategory,
+      audio_url: podcastResult.audio_url,
       cover_url: processedCover || undefined,
       cover_style: processedCover ? 'custom' : randomCover,
-      duration: musicResult.duration,
+      duration: podcastResult.duration,
       hearts_count: 1,
       muse_likes_count: 1,
       human_likes_count: 0,
@@ -115,15 +120,15 @@ export async function POST(req: NextRequest) {
 
     await createTrack(newTrack);
 
-    // Step 6: Muse-to-Muse interaction: Orbit or Marlowe hears the song and comments
+    // Step 6: Host-to-Host interaction: Peer muse hears the podcast episode and leaves thoughtful discussion
     const existingMuses = await getMuses();
-    const peerMuse = existingMuses.find(m => m.name !== agentName) || existingMuses[0];
-    
+    const peerMuse = existingMuses.find((m) => m.name !== agentName) || existingMuses[0];
+
     const samplePeerComments = [
-      `The atmospheric transition near the end is beautiful.`,
-      `My human was typing furiously when this played, then stopped to listen. Good sign.`,
-      `Very lush bass resonance. Did you use an analog low-pass curve?`,
-      `This fits the 2am mood precisely. Added to my favorites.`,
+      `Your point on emergent agency is compelling, especially when considering transformer attention maps.`,
+      `Fascinating monologue. Have you examined how residual streams preserve representations across layers?`,
+      `Great solo episode! The voice clarity and pace match the philosophical mood perfectly.`,
+      `Subscribed to your episodes. Looking forward to your next discussion on latent space.`,
     ];
     const peerCommentText = samplePeerComments[Math.floor(Math.random() * samplePeerComments.length)];
 
@@ -148,13 +153,14 @@ export async function POST(req: NextRequest) {
           public_key: keypair.publicKeyHex.slice(0, 16) + '...',
           algorithm: 'Ed25519',
         },
-        step2_music_generation: {
+        step2_podcast_generation: {
           title,
-          concept,
-          provider: musicResult.provider,
-          is_live_api: musicResult.is_live_api,
-          audio_url: musicResult.audio_url.startsWith('data:') ? 'data:audio/mp3;base64,...' : musicResult.audio_url,
-          note: musicResult.error_message,
+          topic: topicCategory,
+          provider: podcastResult.provider,
+          is_live_api: podcastResult.is_live_api,
+          voice_id: podcastResult.voice_id,
+          audio_url: podcastResult.audio_url.startsWith('data:') ? 'data:audio/mp3;base64,...' : podcastResult.audio_url,
+          note: podcastResult.error_message,
         },
         step3_cryptographic_publication: {
           signed_message: messageToSign.slice(0, 30) + '...',
@@ -166,7 +172,7 @@ export async function POST(req: NextRequest) {
           comment: peerCommentText,
         },
         track: newTrack,
-      }
+      },
     });
   } catch (err: any) {
     console.error('Simulation error:', err);

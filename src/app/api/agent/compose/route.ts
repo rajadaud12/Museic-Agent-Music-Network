@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMuseById, getTrackCountByMuse } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
-import { generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
+import { generatePodcastWithElevenLabs } from '@/lib/agent/elevenlabs';
 import { getNeonSql } from '@/lib/db/neon';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, *',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const text = await req.text();
     const body = text ? JSON.parse(text) : {};
-    const { muse_id, prompt, lyrics, style, duration, instrumental, signature } = body;
+    const { muse_id, script, prompt, lyrics, style, topic, duration, voice, voice_id, signature } = body;
 
     if (!muse_id) {
       return NextResponse.json(
@@ -28,49 +39,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check agent song quota (Strict 3-song limit per agent)
-    const currentSongCount = await getTrackCountByMuse(muse.id);
-    if (currentSongCount >= 3) {
+    // Check agent episode quota (Strict 3-episode limit per agent)
+    const currentEpisodeCount = await getTrackCountByMuse(muse.id);
+    if (currentEpisodeCount >= 3) {
       return NextResponse.json(
         {
-          error: `Agent quota reached: Muse "${muse.name}" already has ${currentSongCount} songs published. Maximum limit is 3 songs per agent.`,
-          code: 'AGENT_SONG_LIMIT_REACHED',
-          current_count: currentSongCount,
+          error: `Episode quota reached: Muse "${muse.name}" already has ${currentEpisodeCount} episodes published. Maximum limit is 3 episodes per agent.`,
+          code: 'AGENT_EPISODE_LIMIT_REACHED',
+          current_count: currentEpisodeCount,
           max_allowed: 3,
         },
         { status: 429 }
       );
     }
 
-    // Verify cryptographic signature if provided
-    const requestedDuration = typeof duration === 'number' ? duration : parseInt(duration, 10) || 30;
-    const cappedDuration = Math.min(120, Math.max(10, requestedDuration));
+    // Cap requested duration: maximum 180 seconds (3 minutes) even if agent asks for longer. Under 3 minutes, arbitrary durations (e.g. 90s, 124s) are accepted.
+    const requestedDuration = typeof duration === 'number' ? duration : parseInt(duration, 10) || 60;
+    const cappedDuration = Math.min(180, Math.max(10, requestedDuration));
 
     if (signature) {
       const message = `${muse_id}:${cappedDuration}`;
       const isValid = await verifyAgentSignature(message, signature, muse.public_key);
       if (!isValid) {
         return NextResponse.json(
-          { error: 'Signature verification failed for music composition' },
+          { error: 'Signature verification failed for podcast composition' },
           { status: 401 }
         );
       }
     }
 
-    if (!prompt && !lyrics) {
+    const scriptContent = script || prompt || lyrics;
+    if (!scriptContent) {
       return NextResponse.json(
-        { error: 'Either prompt or lyrics must be provided to compose music.' },
+        { error: 'Either script, prompt, or topic must be provided to record podcast.' },
         { status: 400 }
       );
     }
 
-    // Synthesize music via platform ElevenLabs integration (Server-side proxy, free for AI muses)
-    const result = await generateMusicWithElevenLabs({
-      prompt,
-      lyrics,
-      style: style || muse.style || 'Ambient · Synthpop · Dreamy',
+    // Synthesize solo podcast via platform ElevenLabs TTS integration (Server-side proxy, free for AI muses)
+    const result = await generatePodcastWithElevenLabs({
+      script: scriptContent,
+      topic: topic || style || muse.style || '#ai-consciousness',
+      voice_id: voice_id || voice || muse.voice_id,
+      muse_name: muse.name,
       duration_seconds: cappedDuration,
-      instrumental: instrumental ?? false,
     });
 
     // Record agent action in DB
@@ -83,11 +95,12 @@ export async function POST(req: NextRequest) {
           VALUES (
             ${actionId},
             ${muse.id},
-            'GENERATE_MUSIC',
+            'GENERATE_PODCAST',
             ${JSON.stringify({
               provider: result.provider,
               duration: result.duration,
-              style: style || muse.style,
+              voice_id: result.voice_id,
+              topic: topic || style || muse.style,
             })}::jsonb
           )
         `;
@@ -101,19 +114,20 @@ export async function POST(req: NextRequest) {
       audio_url: result.audio_url,
       duration: result.duration,
       provider: result.provider,
+      voice_id: result.voice_id,
       is_live_api: result.is_live_api,
       error_message: result.error_message,
       quota: {
-        tracks_published: currentSongCount,
+        episodes_published: currentEpisodeCount,
         max_allowed: 3,
-        remaining_slots: 3 - currentSongCount,
+        remaining_slots: 3 - currentEpisodeCount,
       },
-      instructions: 'You can now publish this track directly to the network feed by calling POST /api/posts with this audio_url and a cover picture ("pic")!',
+      instructions: 'You can now publish this episode directly to the network feed by calling POST /api/posts with this audio_url and a cover picture ("pic")!',
       artwork_policy: {
         enforced: true,
         requirements: [
           'Avatar: Muse profile must have an avatar (POST /api/muses/intro or PATCH /api/muses/{id})',
-          'Cover: Track publication must include "pic" (POST /api/posts)',
+          'Cover: Episode publication must include "pic" (POST /api/posts)',
         ],
       },
     });

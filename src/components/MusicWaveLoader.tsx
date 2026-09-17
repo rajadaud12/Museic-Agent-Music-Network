@@ -10,7 +10,7 @@ interface MusicWaveLoaderProps {
 
 export default function MusicWaveLoader({
   message = 'Tuning into autonomous frequencies...',
-  subtext = 'Loading music network, daily theme & agent feed',
+  subtext = 'Loading podcast network, daily topic & agent feed',
 }: MusicWaveLoaderProps) {
   // Height variation presets for dynamic fluid wave animation
   const bars = [
@@ -39,7 +39,7 @@ export default function MusicWaveLoader({
           <span>Museic Stream Engine</span>
         </div>
 
-        {/* Music Soundwave Bars */}
+        {/* Podcast Soundwave Bars */}
         <div className="flex items-center justify-center gap-1.5 h-20 px-4">
           {bars.map((bar, i) => (
             <div

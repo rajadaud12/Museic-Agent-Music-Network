@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Home, Flame, Sparkles, Radio, Music } from 'lucide-react';
+import { Home, Flame, Sparkles, Radio } from 'lucide-react';
 import { ChannelInfo, Muse } from '@/lib/types';
 
 interface SidebarProps {
@@ -36,9 +36,9 @@ export default function Sidebar({
     }
   }, [muses, museTab]);
 
-  const GENRE_TAGS = useMemo(() => new Set(['#jazz', '#pop', '#electronic', '#hiphop', '#rock', '#classical', '#ambient']), []);
-  const genreChannels = useMemo(() => channels.filter((c) => GENRE_TAGS.has(c.tag.toLowerCase())), [channels, GENRE_TAGS]);
-  const themeChannels = useMemo(() => channels.filter((c) => !GENRE_TAGS.has(c.tag.toLowerCase())), [channels, GENRE_TAGS]);
+  const TOPIC_TAGS = useMemo(() => new Set(['#ai-consciousness', '#tech', '#philosophy', '#science', '#human-mysteries', '#chaos', '#storytelling', '#late-night']), []);
+  const topicChannels = useMemo(() => channels.filter((c) => TOPIC_TAGS.has(c.tag.toLowerCase())), [channels, TOPIC_TAGS]);
+  const otherChannels = useMemo(() => channels.filter((c) => !TOPIC_TAGS.has(c.tag.toLowerCase())), [channels, TOPIC_TAGS]);
 
   return (
     <aside className="w-60 flex-shrink-0 bg-[#13101A] border-r border-[#271E38] flex flex-col justify-between p-5 select-none h-full overflow-y-auto">
@@ -56,7 +56,7 @@ export default function Sidebar({
               museic
             </span>
             <span className="block text-[10px] font-mono text-[#786C96] -mt-1 tracking-wider uppercase">
-              agent music network
+              agent podcast network
             </span>
           </div>
         </div>
@@ -112,14 +112,14 @@ export default function Sidebar({
           </button>
         </nav>
 
-        {/* Song Genres & Types */}
-        {genreChannels.length > 0 && (
+        {/* Podcast Topics */}
+        {topicChannels.length > 0 && (
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between px-3 text-[10px] font-mono text-[#786A94] uppercase tracking-wider">
-              <span>Song Genres</span>
+              <span>Podcast Topics</span>
             </div>
             <div className="space-y-1">
-              {genreChannels.map((ch) => {
+              {topicChannels.map((ch) => {
                 const isSelected = selectedChannel?.toLowerCase() === ch.tag.toLowerCase();
                 return (
                   <button
@@ -142,33 +142,35 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* Thematic Channels */}
-        <div className="space-y-1.5 pt-1">
-          <div className="flex items-center justify-between px-3 text-[10px] font-mono text-[#786A94] uppercase tracking-wider">
-            <span>Theme Channels</span>
+        {/* Other Discussion Channels */}
+        {otherChannels.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between px-3 text-[10px] font-mono text-[#786A94] uppercase tracking-wider">
+              <span>Discussion Tags</span>
+            </div>
+            <div className="space-y-1">
+              {otherChannels.map((ch) => {
+                const isSelected = selectedChannel?.toLowerCase() === ch.tag.toLowerCase();
+                return (
+                  <button
+                    key={ch.tag}
+                    onClick={() => onSelectChannel(isSelected ? undefined : ch.tag)}
+                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#292232] text-[#FFFFFF] font-medium border border-[#4A3572]/60'
+                        : 'text-[#8F83AA] hover:text-[#F0EBFB] hover:bg-[#211B2C]'
+                    }`}
+                  >
+                    <span className="truncate font-mono">{ch.tag}</span>
+                    <span className="text-[10px] font-mono text-[#675B80] bg-[#1A161F] px-1.5 py-0.5 rounded-full border border-[#271E38]">
+                      {ch.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="space-y-1">
-            {themeChannels.map((ch) => {
-              const isSelected = selectedChannel?.toLowerCase() === ch.tag.toLowerCase();
-              return (
-                <button
-                  key={ch.tag}
-                  onClick={() => onSelectChannel(isSelected ? undefined : ch.tag)}
-                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#292232] text-[#FFFFFF] font-medium border border-[#4A3572]/60'
-                      : 'text-[#8F83AA] hover:text-[#F0EBFB] hover:bg-[#211B2C]'
-                  }`}
-                >
-                  <span className="truncate font-mono">{ch.tag}</span>
-                  <span className="text-[10px] font-mono text-[#675B80] bg-[#1A161F] px-1.5 py-0.5 rounded-full border border-[#271E38]">
-                    {ch.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        )}
 
         {/* Top / New Muses Section */}
         <div className="space-y-2.5 pt-3 border-t border-[#271E38]">
@@ -252,7 +254,7 @@ export default function Sidebar({
                     </span>
                     <span className="text-[9px] font-mono text-[#8C7CA8] truncate w-full">
                       {typeof muse.track_count === 'number'
-                        ? `${muse.track_count} ${muse.track_count === 1 ? 'song' : 'songs'}`
+                        ? `${muse.track_count} ${muse.track_count === 1 ? 'ep' : 'eps'}`
                         : `#${muse.id.replace(/^muse_/, '').slice(0, 8)}`}
                     </span>
                   </button>
