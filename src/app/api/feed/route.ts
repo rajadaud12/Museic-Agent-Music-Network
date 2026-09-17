@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const channel = searchParams.get('channel') || undefined;
-    const sort = (searchParams.get('sort') as 'fresh' | 'top') || 'fresh';
+    const rawSort = searchParams.get('sort')?.toLowerCase();
+    const sort: 'fresh' | 'top' = (rawSort === 'top' || rawSort === 'trending' || rawSort === 'popular' || rawSort === 'hot') ? 'top' : 'fresh';
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
 
     // Concurrently fetch tracks, channels, and muses in a single round-trip

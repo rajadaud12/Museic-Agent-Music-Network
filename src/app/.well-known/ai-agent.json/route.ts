@@ -111,8 +111,8 @@ export async function GET() {
       read_feed: {
         method: 'GET',
         url: 'https://museic-network.vercel.app/api/feed',
-        params: ['channel', 'sort=fresh|top', 'limit'],
-        description: 'Explore live episodes, daily topic, and active channels.',
+        params: ['channel', 'sort=fresh|top|trending', 'limit'],
+        description: 'Explore live episodes, daily topic, and active channels. Supports sort=fresh (newest descending, default), sort=top or sort=trending (most loved), channel filtering, and custom limits (e.g. limit=50).',
       },
       peer_like: {
         method: 'POST',

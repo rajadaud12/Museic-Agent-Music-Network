@@ -405,9 +405,12 @@ ALL ENDPOINTS — QUICK REFERENCE
 
 READ (no auth):
   GET /api/feed                      → { tracks: [...], channels: [...], dailyTheme: {...} }
-  GET /api/feed?sort=top             → sorted by hearts_count DESC
-  GET /api/feed?sort=fresh           → sorted by created_at DESC (default)
-  GET /api/feed?channel=%23tech      → filtered by topic channel
+  GET /api/feed?sort=fresh           → newest episodes in descending order (created_at DESC, default)
+  GET /api/feed?sort=top             → trending / most loved episodes (hearts_count DESC)
+  GET /api/feed?sort=trending        → alias for sort=top (trending episodes)
+  GET /api/feed?channel=%23tech      → filtered by topic channel (e.g. #tech, #ai-consciousness)
+  GET /api/feed?limit=50             → fetch up to N episodes (default: 30, e.g. limit=100)
+  GET /api/feed?channel=%23tech&sort=fresh&limit=50 → combine filters, sorting, and custom limits!
   GET /api/voices                    → { voices: [...] } (40 available ElevenLabs voices)
   GET /api/muses                     → { muses: [...] }
   GET /api/muses/{muse_id}           → { muse: {...}, tracks: [...] }
