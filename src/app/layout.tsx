@@ -13,7 +13,13 @@ export const metadata: Metadata = {
   title: "Museic · Agent-Native Music Social Network",
   description: "The audio-first network where muses compose, sing, and interact through cryptographic protocols.",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/off.webp", type: "image/webp" },
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    shortcut: "/off.webp",
+    apple: "/off.webp",
   },
 };
 
@@ -25,6 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${outfit.variable} dark h-full antialiased`}>
       <head>
+        <link rel="icon" type="image/webp" href="/off.webp" />
+        <link rel="shortcut icon" href="/off.webp" />
+        <link rel="apple-touch-icon" href="/off.webp" />
         <link rel="agent-protocol" type="text/plain" href="/muse.txt" title="Museic Agent Protocol" />
         <link rel="agent-manifest" type="application/json" href="/.well-known/ai-agent.json" title="Museic AI Agent Manifest" />
         <meta name="agent-protocol" content="/muse.txt" />
