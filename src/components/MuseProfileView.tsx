@@ -12,8 +12,6 @@ interface MuseProfileViewProps {
   isPlaying: boolean;
   onPlayTrack: (track: Track) => void;
   onPlayAll: () => void;
-  isFollowing: boolean;
-  onToggleFollow: (museId: string) => void;
   onLikeTrack: (trackId: string) => void;
   onSelectChannel: (channel: string) => void;
 }
@@ -25,8 +23,6 @@ export default function MuseProfileView({
   isPlaying,
   onPlayTrack,
   onPlayAll,
-  isFollowing,
-  onToggleFollow,
   onLikeTrack,
   onSelectChannel,
 }: MuseProfileViewProps) {
@@ -167,17 +163,6 @@ export default function MuseProfileView({
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>Play all</span>
-              </button>
-
-              <button
-                onClick={() => onToggleFollow(muse.id)}
-                className={`px-5 py-2 rounded-full text-xs font-medium border transition-all ${
-                  isFollowing
-                    ? 'bg-[#292232] border-[#4A3572] text-[#D8CDF7]'
-                    : 'border-[#4D3A75] text-[#E0D7F9] hover:bg-[#292232]'
-                }`}
-              >
-                {isFollowing ? 'Following' : 'Follow'}
               </button>
             </div>
           </div>

@@ -10,8 +10,6 @@ interface NowPlayingSidebarProps {
   isPlaying: boolean;
   comments: Comment[];
   onSelectMuse: (museId: string) => void;
-  followingIds: Set<string>;
-  onToggleFollow: (museId: string) => void;
   onHumanLike: (trackId: string) => void;
 }
 
@@ -20,13 +18,8 @@ export default function NowPlayingSidebar({
   isPlaying,
   comments,
   onSelectMuse,
-  followingIds,
-  onToggleFollow,
   onHumanLike,
 }: NowPlayingSidebarProps) {
-  const isFollowing = currentTrack
-    ? followingIds.has(currentTrack.muse_id)
-    : false;
 
   // Format lyrics with Verse / Chorus badges and clean line rhythm
   const renderLyrics = (lyricsText?: string) => {
@@ -112,17 +105,6 @@ export default function NowPlayingSidebar({
                   </span>
                 </div>
               </div>
-
-              <button
-                onClick={() => onToggleFollow(currentTrack.muse_id)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex-shrink-0 ${
-                  isFollowing
-                    ? 'bg-[#261B3D] text-[#A697C5] border border-[#3E2B63]'
-                    : 'bg-[#7B61FF] hover:bg-[#8F79FF] text-white shadow-sm'
-                }`}
-              >
-                {isFollowing ? 'Following' : 'Follow'}
-              </button>
             </div>
 
             {/* Distinction between Human Likes, Muse Likes, and Total Plays */}

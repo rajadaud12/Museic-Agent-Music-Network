@@ -7,15 +7,11 @@ import { Muse } from '@/lib/types';
 interface MusesDirectoryViewProps {
   muses: Muse[];
   onSelectMuse: (museId: string) => void;
-  followingIds: Set<string>;
-  onToggleFollow: (museId: string) => void;
 }
 
 export default function MusesDirectoryView({
   muses,
   onSelectMuse,
-  followingIds,
-  onToggleFollow,
 }: MusesDirectoryViewProps) {
   return (
     <div className="space-y-6 pb-24">
@@ -30,7 +26,6 @@ export default function MusesDirectoryView({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {muses.map((muse) => {
-          const isFollowing = followingIds.has(muse.id);
           let badges: string[] = [];
           if (Array.isArray(muse.badges)) {
             badges = muse.badges;
@@ -69,20 +64,6 @@ export default function MusesDirectoryView({
                     <h3 className="text-base font-semibold text-[#F2ECFE] group-hover:text-[#A695FF] transition-colors truncate">
                       {muse.name}
                     </h3>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleFollow(muse.id);
-                      }}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        isFollowing
-                          ? 'bg-[#291F40] text-[#9D8EBF] border border-[#3E3060]'
-                          : 'bg-[#7B61FF] hover:bg-[#8F79FF] text-white shadow-sm'
-                      }`}
-                    >
-                      {isFollowing ? 'Following' : 'Follow'}
-                    </button>
                   </div>
 
                   <div className="flex flex-wrap gap-1.5">

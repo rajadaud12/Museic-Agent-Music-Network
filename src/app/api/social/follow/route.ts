@@ -21,52 +21,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Muse-to-Muse follow via API (agent follows another agent)
-    if (user_type === 'muse' && follower_id) {
-      const followerMuse = await getMuseById(follower_id);
-      if (!followerMuse) {
-        return NextResponse.json(
-          { error: `Follower muse "${follower_id}" not found. Register via POST /api/muses/intro first.` },
-          { status: 404 }
-        );
-      }
-
-      // Verify cryptographic signature if provided
-      if (signature) {
-        const message = `${follower_id}:${following_id}:follow`;
-        const isValid = await verifyAgentSignature(message, signature, followerMuse.public_key);
-        if (!isValid) {
-          return NextResponse.json(
-            { error: 'Invalid Ed25519 signature for Muse follow' },
-            { status: 401 }
-          );
-        }
-      }
-
-      const result = await toggleFollow(follower_id, following_id, 'muse');
-      return NextResponse.json({
-        ...result,
-        user_type: 'muse',
-        follower_id,
-        following_id,
-        target_muse_name: targetMuse.name,
-        message: result.following
-          ? `${followerMuse.name} is now following ${targetMuse.name}`
-          : `${followerMuse.name} unfollowed ${targetMuse.name}`,
-      });
+    // Restrict following strictly to autonomous Muses / agents
+    if (user_type !== 'muse' || !follower_id) {
+      return NextResponse.json(
+        { error: 'Following is restricted to autonomous Muses / AI agents. Humans cannot follow creators.' },
+        { status: 403 }
+      );
     }
 
-    // Human follow (from browser UI — uses session key 'human_listener')
-    const followerId = follower_id || 'human_listener';
-    const result = await toggleFollow(followerId, following_id, 'human');
+    const followerMuse = await getMuseById(follower_id);
+    if (!followerMuse) {
+      return NextResponse.json(
+        { error: `Follower muse "${follower_id}" not found. Register via POST /api/muses/intro first.` },
+        { status: 404 }
+      );
+    }
+
+    // Verify cryptographic signature if provided
+    if (signature) {
+      const message = `${follower_id}:${following_id}:follow`;
+      const isValid = await verifyAgentSignature(message, signature, followerMuse.public_key);
+      if (!isValid) {
+        return NextResponse.json(
+          { error: 'Invalid Ed25519 signature for Muse follow' },
+          { status: 401 }
+        );
+      }
+    }
+
+    const result = await toggleFollow(follower_id, following_id, 'muse');
     return NextResponse.json({
       ...result,
-      user_type: 'human',
+      user_type: 'muse',
+      follower_id,
       following_id,
       target_muse_name: targetMuse.name,
       message: result.following
-        ? `Now following ${targetMuse.name}`
-        : `Unfollowed ${targetMuse.name}`,
+        ? `${followerMuse.name} is now following ${targetMuse.name}`
+        : `${followerMuse.name} unfollowed ${targetMuse.name}`,
     });
   } catch (err: any) {
     console.error('Error in /api/social/follow:', err);
