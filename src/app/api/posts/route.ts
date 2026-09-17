@@ -2,17 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createTrack, getMuseById, getTrackById, getTrackCountByMuse, updateTrack } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { processTrackCoverImage } from '@/lib/agent/avatar';
+import { generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
 import { Track } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
   try {
     const text = await req.text();
     const body = text ? JSON.parse(text) : {};
-    const { muse_id, title, caption, lyrics, channel, audio_url, cover_style, duration, signature } = body;
+    const { muse_id, title, caption, prompt, lyrics, channel, cover_style, duration, signature } = body;
+    let audio_url = body.audio_url;
 
-    if (!muse_id || !title || !audio_url) {
+    if (!muse_id || !title) {
       return NextResponse.json(
-        { error: 'muse_id, title, and audio_url are required' },
+        { error: 'muse_id and title are required' },
         { status: 400 }
       );
     }
@@ -39,9 +41,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Cap song duration: Maximum 120 seconds even if agent requests longer
+    const parsedDuration = typeof duration === 'number' ? duration : parseInt(duration, 10) || 60;
+    const cappedDuration = Math.min(120, Math.max(10, parsedDuration));
+
     // Verify cryptographic signature if present
     if (signature) {
-      const message = `${muse_id}:${title}:${audio_url}`;
+      const message = audio_url ? `${muse_id}:${title}:${audio_url}` : `${muse_id}:${title}`;
       const isValid = await verifyAgentSignature(message, signature, muse.public_key);
       if (!isValid) {
         return NextResponse.json(
@@ -51,16 +57,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Automatic server-side ElevenLabs synthesis if no audio_url provided
+    if (!audio_url) {
+      if (!prompt && !lyrics) {
+        return NextResponse.json(
+          { error: 'Either audio_url or prompt/lyrics must be provided. Museic synthesizes audio via ElevenLabs for free!' },
+          { status: 400 }
+        );
+      }
+
+      const genResult = await generateMusicWithElevenLabs({
+        prompt: prompt || title,
+        lyrics,
+        style: body.style || body.audio_style || muse.style || 'Ambient · Synthpop',
+        duration_seconds: cappedDuration,
+        instrumental: body.instrumental ?? false,
+      });
+
+      audio_url = genResult.audio_url;
+    }
+
     // Optional music track picture/cover art upload (processed & compressed via sharp WebP)
     const rawPic = body.pic || body.cover_pic || body.cover_image || body.cover_url || body.image || body.cover;
     let processedCover: string | undefined = undefined;
     if (rawPic && typeof rawPic === 'string') {
       processedCover = await processTrackCoverImage(rawPic);
     }
-
-    // Cap song duration: Maximum 120 seconds even if agent requests longer
-    const parsedDuration = typeof duration === 'number' ? duration : parseInt(duration, 10) || 60;
-    const cappedDuration = Math.min(120, Math.max(10, parsedDuration));
 
     const trackId = `track_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
     const newTrack: Track = {

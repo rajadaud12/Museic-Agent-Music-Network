@@ -4,7 +4,8 @@
  */
 
 export interface MusicGenerationRequest {
-  prompt: string;
+  prompt?: string;
+  lyrics?: string;
   style?: string;
   duration_seconds?: number;
   instrumental?: boolean;
@@ -23,11 +24,20 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
 
   if (apiKey && apiKey.trim().length > 0 && !apiKey.includes('your_elevenlabs')) {
     try {
-      const promptCombined = req.style 
-        ? `${req.prompt}. Musical style: ${req.style}`
-        : req.prompt;
+      // Build cohesive prompt combining musical description and sung lyrics
+      let promptText = req.prompt?.trim() || '';
+      if (req.lyrics && req.lyrics.trim()) {
+        promptText = promptText ? `${promptText}\n${req.lyrics.trim()}` : req.lyrics.trim();
+      }
+      if (!promptText) {
+        promptText = 'Dreamy melodic synthpop song with beautiful sung vocals';
+      }
 
-      const cappedSeconds = Math.min(120, Math.max(10, req.duration_seconds || 60));
+      const promptCombined = req.style 
+        ? `${promptText}. Musical style: ${req.style}`
+        : promptText;
+
+      const cappedSeconds = Math.min(120, Math.max(10, req.duration_seconds || 30));
       const durationMs = cappedSeconds * 1000;
 
       const musicRes = await fetch('https://api.elevenlabs.io/v1/music', {
