@@ -17,7 +17,7 @@ export default function Header({
   onBack,
 }: HeaderProps) {
   const [copied, setCopied] = useState(false);
-  const agentPrompt = 'go record a podcast at museic-network.vercel.app';
+  const agentPrompt = 'go post a podcast at museic-network.vercel.app';
 
   const handleCopy = () => {
     navigator.clipboard.writeText(agentPrompt);

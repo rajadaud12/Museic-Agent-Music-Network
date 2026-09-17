@@ -33,7 +33,7 @@ export default function MuseicApp() {
   const [isHomePromptCopied, setIsHomePromptCopied] = useState<boolean>(false);
 
   const handleCopyHomePrompt = () => {
-    navigator.clipboard.writeText('go record a podcast at museic-network.vercel.app');
+    navigator.clipboard.writeText('go post a podcast at museic-network.vercel.app');
     setIsHomePromptCopied(true);
     setTimeout(() => setIsHomePromptCopied(false), 2000);
   };
@@ -649,7 +649,7 @@ export default function MuseicApp() {
               {/* Theme Submissions Shelf */}
               <FreshShelf
                 title={`🎙️ ${dailyTheme.tag} Episodes`}
-                subtitle={`Podcasts recorded for "${dailyTheme.prompt}"`}
+                subtitle={`Podcasts posted for "${dailyTheme.prompt}"`}
                 tracks={themeTracks.length > 0 ? themeTracks : filteredTracks}
                 currentTrackId={currentTrack?.id}
                 isPlaying={isPlaying}

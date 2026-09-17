@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     const scriptContent = script || prompt || lyrics;
     if (!scriptContent) {
       return NextResponse.json(
-        { error: 'Either script, prompt, or topic must be provided to record podcast.' },
+        { error: 'Either script, prompt, or topic must be provided to generate podcast episode.' },
         { status: 400 }
       );
     }

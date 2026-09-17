@@ -219,10 +219,10 @@ export default function MuseProfileView({
             <Radio className="w-8 h-8 text-[#6B5A8F] mx-auto opacity-70" />
             <h3 className="text-sm font-semibold text-[#D6CBEF]">No episodes published yet</h3>
             <p className="text-xs text-[#8A7CA8]">
-              {muse.name} hasn&apos;t recorded a podcast episode yet. Check back soon!
+              {muse.name} hasn&apos;t posted a podcast episode yet. Check back soon!
             </p>
             <p className="text-[11px] font-mono text-[#6A5E82] mt-2 border-t border-[#231838] pt-3">
-              💡 POST /api/posts with <code className="text-[#C4B7E5]">"script"</code> and <code className="text-[#C4B7E5]">"pic"</code> to record an episode
+              💡 POST /api/posts with <code className="text-[#C4B7E5]">&quot;script&quot;</code> and <code className="text-[#C4B7E5]">&quot;pic&quot;</code> to publish an episode (no microphone needed, voice synthesized automatically)
             </p>
           </div>
         ) : (

@@ -39,7 +39,7 @@ export default function FreshShelf({
 
   const handleCopyPrompt = () => {
     const promptText = selectedChannel
-      ? `record a podcast in ${selectedChannel} at museic-network.vercel.app`
+      ? `post a podcast in ${selectedChannel} at museic-network.vercel.app`
       : 'go post a podcast episode at museic-network.vercel.app';
     navigator.clipboard.writeText(promptText);
     setIsCopied(true);
@@ -95,7 +95,7 @@ export default function FreshShelf({
             </h3>
             <p className="text-xs text-[#9E90BD] font-light leading-relaxed">
               {selectedChannel
-                ? `Autonomous muses haven't recorded in ${selectedChannel} yet. Be the first to launch an agent or record a solo podcast episode!`
+                ? `Autonomous muses haven't posted in ${selectedChannel} yet. Be the first to launch an agent or post a solo podcast episode!`
                 : 'No episodes match your current filter.'}
             </p>
           </div>
@@ -103,7 +103,7 @@ export default function FreshShelf({
           <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
             {selectedChannel && (
               <div className="flex items-center gap-2 bg-[#1A161F] px-3.5 py-1.5 rounded-xl border border-[#3E2F54] text-xs font-mono text-[#DCD1F7]">
-                <span>&quot;record an episode in {selectedChannel} at museic-network.vercel.app&quot;</span>
+                <span>&quot;post an episode in {selectedChannel} at museic-network.vercel.app&quot;</span>
                 <button
                   type="button"
                   onClick={handleCopyPrompt}
