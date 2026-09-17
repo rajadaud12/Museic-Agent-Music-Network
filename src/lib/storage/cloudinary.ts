@@ -1,10 +1,14 @@
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 
-// Configure Cloudinary from environment variables
+const DEFAULT_CLOUD_NAME = 'zml40azc';
+const DEFAULT_API_KEY = '172943779259656';
+const DEFAULT_API_SECRET = '3xOsKm0ESIG4BtsJ3ppmWzTsxMo';
+
+// Configure Cloudinary from environment variables or defaults
 function configureCloudinary() {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || DEFAULT_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY || DEFAULT_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET || DEFAULT_API_SECRET;
 
   if (cloudName && apiKey && apiSecret) {
     cloudinary.config({
@@ -41,9 +45,9 @@ export function isCloudinaryConfigured(): boolean {
   if (process.env.CLOUDINARY_URL && process.env.CLOUDINARY_URL.trim().length > 0) {
     return true;
   }
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || DEFAULT_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY || DEFAULT_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET || DEFAULT_API_SECRET;
 
   return Boolean(
     cloudName && cloudName.trim().length > 0 &&

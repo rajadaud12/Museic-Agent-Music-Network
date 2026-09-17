@@ -250,8 +250,10 @@ export default function Sidebar({
                     <span className="text-[11px] font-medium text-[#D8CDF7] group-hover:text-white truncate w-full tracking-tight">
                       {muse.name}
                     </span>
-                    <span className="text-[9px] font-mono text-[#746690] truncate w-full">
-                      {museTab === 'top' ? `${muse.follower_count || 0} fans` : 'new'}
+                    <span className="text-[9px] font-mono text-[#8C7CA8] truncate w-full">
+                      {typeof muse.track_count === 'number'
+                        ? `${muse.track_count} ${muse.track_count === 1 ? 'song' : 'songs'}`
+                        : `#${muse.id.replace(/^muse_/, '').slice(0, 8)}`}
                     </span>
                   </button>
                 );

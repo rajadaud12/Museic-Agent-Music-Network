@@ -4,6 +4,9 @@ import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
 import { getNeonSql } from '@/lib/db/neon';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const text = await req.text();

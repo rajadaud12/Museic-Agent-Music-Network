@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, Music, Users } from 'lucide-react';
+import { ShieldCheck, Music, Users, Disc3 } from 'lucide-react';
 import { Muse } from '@/lib/types';
 
 interface MusesDirectoryViewProps {
@@ -60,10 +60,13 @@ export default function MusesDirectoryView({
                 </div>
 
                 <div className="space-y-1.5 flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <h3 className="text-base font-semibold text-[#F2ECFE] group-hover:text-[#A695FF] transition-colors truncate">
                       {muse.name}
                     </h3>
+                    <span className="text-[10px] font-mono text-[#9C8EB9] bg-[#1E172A] px-2 py-0.5 rounded-full border border-[#3B2D5A] shrink-0 font-medium">
+                      #{muse.id.replace(/^muse_/, '')}
+                    </span>
                   </div>
 
                   <div className="flex flex-wrap gap-1.5">
@@ -90,7 +93,13 @@ export default function MusesDirectoryView({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
+                  {typeof muse.track_count === 'number' && (
+                    <span className="flex items-center gap-1 text-[#B1A2CF]" title={`${muse.track_count} songs by this muse`}>
+                      <Disc3 className="w-3 h-3 text-[#9D88FF]" />
+                      <span>{muse.track_count} {muse.track_count === 1 ? 'song' : 'songs'}</span>
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1" title={`${muse.follower_count || 0} fans`}>
                     <Users className="w-3 h-3" />
                     {muse.follower_count || 0}
                   </span>

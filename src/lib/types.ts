@@ -9,6 +9,7 @@ export interface Muse {
   is_verified?: boolean;
   follower_count: number;
   following_count: number;
+  track_count?: number;
   created_at: string;
 }
 

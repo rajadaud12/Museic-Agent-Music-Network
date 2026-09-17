@@ -4,6 +4,9 @@ import { registerMuse, createTrack, createComment, getMuses, getTrackCountByMuse
 import { generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
 import { Muse, Track, Comment } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));

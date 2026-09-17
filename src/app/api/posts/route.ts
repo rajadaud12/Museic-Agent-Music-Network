@@ -6,6 +6,9 @@ import { generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
 import { isCloudinaryConfigured, uploadAudioToCloudinary } from '@/lib/storage/cloudinary';
 import { Track } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const text = await req.text();
@@ -86,14 +89,31 @@ export async function POST(req: NextRequest) {
       audio_url = genResult.audio_url;
     }
 
-    // If audio_url is base64 data URI, upload to Cloudinary if available
-    if (audio_url && audio_url.startsWith('data:audio/') && isCloudinaryConfigured()) {
+    // Strictly upload any base64 data URI to Cloudinary CDN
+    if (audio_url && audio_url.startsWith('data:audio/')) {
       try {
         const uploadRes = await uploadAudioToCloudinary(audio_url, 'tracks');
         audio_url = uploadRes.url;
-      } catch (uploadErr) {
-        console.warn('Cloudinary upload failed for track audio, keeping base64 fallback:', uploadErr);
+      } catch (uploadErr: any) {
+        console.error('Cloudinary upload failed for track audio:', uploadErr);
+        return NextResponse.json(
+          {
+            error: 'Failed to upload song audio to Cloudinary CDN. Base64 data:audio storage is strictly prohibited.',
+            details: uploadErr?.message || String(uploadErr),
+          },
+          { status: 502 }
+        );
       }
+    }
+
+    // Strict safety check: Never allow raw base64 data:audio into the database
+    if (!audio_url || !audio_url.startsWith('http')) {
+      return NextResponse.json(
+        {
+          error: 'Invalid audio URL. Tracks must be hosted on Cloudinary CDN or a valid HTTPS URL. Raw data:audio is not permitted.',
+        },
+        { status: 400 }
+      );
     }
 
     // Optional music track picture/cover art upload (processed via sharp & Cloudinary)

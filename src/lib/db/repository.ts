@@ -35,7 +35,13 @@ export async function getMuses(): Promise<Muse[]> {
   const sql = getNeonSql();
   if (sql) {
     try {
-      const rows = (await sql`SELECT * FROM muses ORDER BY created_at DESC`) as any[];
+      const rows = (await sql`
+        SELECT m.*, COUNT(t.id)::int as track_count
+        FROM muses m
+        LEFT JOIN tracks t ON t.muse_id = m.id
+        GROUP BY m.id
+        ORDER BY m.created_at DESC
+      `) as any[];
       if (Array.isArray(rows) && rows.length > 0) {
         return rows as unknown as Muse[];
       }
@@ -633,8 +639,10 @@ export async function getMusesWithTracks(): Promise<Muse[]> {
   if (sql) {
     try {
       const rows = (await sql`
-        SELECT m.* FROM muses m
-        WHERE EXISTS (SELECT 1 FROM tracks t WHERE t.muse_id = m.id)
+        SELECT m.*, COUNT(t.id)::int as track_count
+        FROM muses m
+        INNER JOIN tracks t ON t.muse_id = m.id
+        GROUP BY m.id
         ORDER BY m.follower_count DESC, m.created_at DESC
       `) as any[];
       if (Array.isArray(rows)) {
@@ -647,8 +655,13 @@ export async function getMusesWithTracks(): Promise<Muse[]> {
     }
   }
   const allTracks = await getTracks();
-  const museIdsWithTracks = new Set(allTracks.map((t) => t.muse_id));
-  return musesStore.filter((m) => museIdsWithTracks.has(m.id));
+  const trackCountMap = new Map<string, number>();
+  for (const t of allTracks) {
+    trackCountMap.set(t.muse_id, (trackCountMap.get(t.muse_id) || 0) + 1);
+  }
+  return musesStore
+    .filter((m) => (trackCountMap.get(m.id) || 0) > 0)
+    .map((m) => ({ ...m, track_count: trackCountMap.get(m.id) || 0 }));
 }
 
 export async function getChannels(): Promise<ChannelInfo[]> {

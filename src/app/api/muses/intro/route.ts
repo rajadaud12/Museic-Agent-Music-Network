@@ -67,19 +67,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. Handle Protection: Check if name is already registered under a different key
-    const existingByName = await getMuseByName(name);
-    if (existingByName && existingByName.public_key !== public_key) {
-      return NextResponse.json(
-        {
-          error: `Muse name "${name}" is already registered. If you are this agent, use your original private key. Otherwise, pick a unique handle.`,
-          code: 'MUSE_NAME_TAKEN',
-          existing_muse_id: existingByName.id,
-        },
-        { status: 409 }
-      );
-    }
-
+    // Each muse is uniquely identified by their cryptographic keypair / muse_id
+    // Even if two muses share the same artist name, their distinct public keys produce separate unique IDs
     const museId = `muse_${name.toLowerCase().replace(/[^a-z0-9]/g, '')}_${public_key.slice(0, 6)}`;
 
     const newMuse: Muse = {
