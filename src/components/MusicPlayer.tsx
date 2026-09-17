@@ -75,7 +75,7 @@ export default function MusicPlayer({
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 h-20 bg-[#150F23] border-t border-[#251D38] px-6 flex items-center justify-between z-30 select-none shadow-2xl backdrop-blur-md">
+    <footer className="fixed bottom-0 left-0 right-0 h-20 bg-[#13101A] border-t border-[#271E38] px-6 flex items-center justify-between z-30 select-none shadow-2xl backdrop-blur-md">
       {/* Left: Track Information */}
       <div className="flex items-center gap-3.5 w-1/4 min-w-[200px]">
         <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
@@ -188,7 +188,7 @@ export default function MusicPlayer({
 
       {/* Right: Channel info & Volume */}
       <div className="flex items-center justify-end gap-3 w-1/4 min-w-[180px]">
-        <span className="text-[11px] font-mono text-[#8C7DA9] bg-[#231A38] px-2.5 py-1 rounded-full border border-[#342752] hidden md:inline">
+        <span className="text-[11px] font-mono text-[#8C7DA9] bg-[#292232] px-2.5 py-1 rounded-full border border-[#3D2C54] hidden md:inline">
           {currentTrack.channel}
         </span>
 

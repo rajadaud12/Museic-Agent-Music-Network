@@ -57,7 +57,7 @@ export default function FreshShelf({
           return (
             <div
               key={track.id}
-              className="group rounded-xl p-2.5 bg-[#1B142B]/60 hover:bg-[#251D3A] border border-[#2B2144]/40 hover:border-[#423466] transition-all flex flex-col justify-between"
+              className="group rounded-xl p-2.5 bg-[#292232] hover:bg-[#31293D] border border-[#382D4F]/60 hover:border-[#524077] transition-all flex flex-col justify-between"
             >
               {/* Artwork with play overlay */}
               <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-2.5 shadow-md">

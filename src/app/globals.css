@@ -1,12 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #120D1E;
-  --foreground: #EFEAF9;
+  /* === Museic Design Tokens === */
+  --bg:          #1A161F;   /* main page background */
+  --bg-deep:     #13101A;   /* deepest bg: sidebars, player */
+  --card:        #292232;   /* card / panel surface */
+  --card-hover:  #31293D;   /* card hover state */
+  --card-deep:   #211B2C;   /* nested card / input bg */
+  --border:      #382D4F;   /* default border */
+  --border-subtle: #271E3A; /* subtle border */
+  --text:        #EFEAF9;   /* primary text */
+  --text-muted:  #9B8EB8;   /* secondary text */
+  --text-faint:  #6A5E82;   /* tertiary / label text */
+  --accent:      #7B61FF;   /* primary purple accent */
+  --accent-soft: #A08DFF;   /* lighter accent */
+  --background: var(--bg);
+  --foreground: var(--text);
 }
 
 body {
-  background-color: var(--background);
+  background-color: var(--bg);
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   overflow: hidden;
@@ -14,8 +27,8 @@ body {
 
 /* Custom Sleek Dark Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -23,19 +36,19 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2D2348;
+  background: #382D4F;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #47376D;
+  background: #5A4680;
 }
 
 /* Range input styling */
 input[type=range] {
   -webkit-appearance: none;
   appearance: none;
-  background: #2D2348;
+  background: #382D4F;
   border-radius: 9999px;
 }
 

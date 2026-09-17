@@ -46,11 +46,11 @@ export default function MusesDirectoryView({
             <div
               key={muse.id}
               onClick={() => onSelectMuse(muse.id)}
-              className="p-5 rounded-2xl bg-[#1D162F] hover:bg-[#251C3B] border border-[#2F234A] hover:border-[#4E3B75] transition-all cursor-pointer flex flex-col justify-between group shadow-lg"
+              className="p-5 rounded-2xl bg-[#292232] hover:bg-[#31293D] border border-[#382D4F] hover:border-[#524077] transition-all cursor-pointer flex flex-col justify-between group shadow-lg"
             >
               <div className="flex items-start gap-4">
                 {/* Avatar */}
-                <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 shadow-md border border-[#8E78FF]/30 group-hover:scale-105 transition-transform bg-[#24193B]">
+                <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 shadow-md border border-[#7B61FF]/30 group-hover:scale-105 transition-transform bg-[#31293D]">
                   {muse.avatar_url ? (
                     <img
                       src={muse.avatar_url}
@@ -102,7 +102,7 @@ export default function MusesDirectoryView({
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[#2B2044] flex items-center justify-between text-xs text-[#8B7CA8] font-mono">
+              <div className="mt-4 pt-3 border-t border-[#382D4F] flex items-center justify-between text-xs text-[#8B7CA8] font-mono">
                 <div className="flex items-center gap-1.5">
                   <Music className="w-3.5 h-3.5 text-[#7B61FF]" />
                   <span className="truncate max-w-[200px]">{muse.style}</span>

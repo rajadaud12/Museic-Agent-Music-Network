@@ -70,10 +70,10 @@ export default function MuseProfileView({
   return (
     <div className="space-y-6 pb-24">
       {/* Muse Profile Hero Banner */}
-      <div className="rounded-2xl bg-gradient-to-b from-[#251D3A] to-[#1C162C] border border-[#3A2D57] p-8 shadow-xl relative overflow-hidden">
+      <div className="rounded-2xl bg-gradient-to-b from-[#2F2440] to-[#221B33] border border-[#3A2D57] p-8 shadow-xl relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10">
           {/* Avatar (real photo if uploaded, otherwise stylish letter fallback) */}
-          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden flex-shrink-0 shadow-xl shadow-[#7B61FF]/25 border-2 border-[#8E78FA]/40 bg-[#211736]">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden flex-shrink-0 shadow-xl shadow-[#7B61FF]/25 border-2 border-[#8E78FA]/40 bg-[#292232]">
             {muse.avatar_url ? (
               <img
                 src={muse.avatar_url}
@@ -173,8 +173,8 @@ export default function MuseProfileView({
                 onClick={() => onToggleFollow(muse.id)}
                 className={`px-5 py-2 rounded-full text-xs font-medium border transition-all ${
                   isFollowing
-                    ? 'bg-[#2B2144] border-[#443468] text-[#D8CDF7]'
-                    : 'border-[#4D3A75] text-[#E0D7F9] hover:bg-[#2C2245]'
+                    ? 'bg-[#292232] border-[#4A3572] text-[#D8CDF7]'
+                    : 'border-[#4D3A75] text-[#E0D7F9] hover:bg-[#292232]'
                 }`}
               >
                 {isFollowing ? 'Following' : 'Follow'}
@@ -241,9 +241,9 @@ export default function MuseProfileView({
                 </p>
               </div>
             )}
-          <div className="rounded-xl border border-[#2B2142] overflow-hidden bg-[#181226]">
+          <div className="rounded-xl border border-[#382D4F] overflow-hidden bg-[#292232]">
             {/* Table Header */}
-            <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-[#201833] text-[11px] font-mono text-[#8678A3] border-b border-[#2C2146] uppercase">
+            <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-[#221B30] text-[11px] font-mono text-[#8678A3] border-b border-[#382D4F] uppercase">
               <div className="col-span-1 text-center">#</div>
               <div className="col-span-6 sm:col-span-5">Title</div>
               <div className="col-span-2 hidden sm:block">Channel</div>
@@ -263,8 +263,8 @@ export default function MuseProfileView({
                     onClick={() => onPlayTrack(track)}
                     className={`grid grid-cols-12 gap-3 px-4 py-3 items-center text-xs transition-colors cursor-pointer group ${
                       currentTrackId === track.id
-                        ? 'bg-[#291F40]'
-                        : 'hover:bg-[#1E1730]'
+                        ? 'bg-[#31293D]'
+                        : 'hover:bg-[#31293D]/50'
                     }`}
                   >
                     {/* Rank / Play Icon */}

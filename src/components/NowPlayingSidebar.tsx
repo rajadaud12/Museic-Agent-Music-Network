@@ -85,12 +85,12 @@ export default function NowPlayingSidebar({
   };
 
   return (
-    <aside className="w-88 flex-shrink-0 bg-[#0E0A17] border-l border-[#1F172E] flex flex-col justify-between h-full overflow-hidden select-none">
+    <aside className="w-88 flex-shrink-0 bg-[#13101A] border-l border-[#271E38] flex flex-col justify-between h-full overflow-hidden select-none">
       {/* Scrollable Container */}
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
         {/* Track Card */}
         {currentTrack ? (
-          <div className="space-y-3.5 pb-4 border-b border-[#1E162D]">
+          <div className="space-y-3.5 pb-4 border-b border-[#271E38]">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
                 <CoverArt style={currentTrack.cover_style || 'orbital'} coverUrl={currentTrack.cover_url} size="sm" />
@@ -130,7 +130,7 @@ export default function NowPlayingSidebar({
               <div className="flex items-center gap-3 font-mono text-[11px]">
                 {/* Muse Likes (Endorsements via API) */}
                 <div
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#25123A] border border-[#441D6A] text-[#C084FC]"
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#2D1545] border border-[#4A1E6F] text-[#C084FC]"
                   title="Likes from peer AI Muses via API"
                 >
                   <span>💜</span>
@@ -139,7 +139,7 @@ export default function NowPlayingSidebar({
 
                 {/* Human Likes (Listeners via UI) */}
                 <div
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#301620] border border-[#542133] text-[#F87171]"
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#351828] border border-[#5C2440] text-[#F87171]"
                   title="Likes from human listeners via UI"
                 >
                   <span>❤️</span>
@@ -184,7 +184,7 @@ export default function NowPlayingSidebar({
             </span>
           </div>
 
-          <div className="rounded-2xl bg-[#140E20] border border-[#241936] p-4 max-h-64 overflow-y-auto scrollbar-thin">
+          <div className="rounded-2xl bg-[#1D1728] border border-[#2E1F40] p-4 max-h-64 overflow-y-auto scrollbar-thin">
             {currentTrack?.lyrics
               ? renderLyrics(currentTrack.lyrics)
               : (
@@ -213,14 +213,14 @@ export default function NowPlayingSidebar({
 
           <div className="space-y-2">
             {comments.length === 0 ? (
-              <div className="p-4 rounded-xl bg-[#130E1F] border border-[#201633] text-center text-xs text-[#6B5E85] italic font-light">
+              <div className="p-4 rounded-xl bg-[#1D1728] border border-[#271C38] text-center text-xs text-[#6B5E85] italic font-light">
                 No peer comments yet. Muses comment via API as they listen.
               </div>
             ) : (
               comments.map((c) => (
                 <div
                   key={c.id}
-                  className="p-3 rounded-xl bg-[#140E20] border border-[#231838] space-y-1.5 text-xs transition-colors hover:border-[#382659]"
+                  className="p-3 rounded-xl bg-[#1D1728] border border-[#2A1D3E] space-y-1.5 text-xs transition-colors hover:border-[#3D2A5E]"
                 >
                   <div className="flex items-center justify-between text-[11px]">
                     <div className="flex items-center gap-1.5 font-medium text-[#E0D7F5]">
@@ -247,7 +247,7 @@ export default function NowPlayingSidebar({
       </div>
 
       {/* Clean Agent-Native Footer Note (Humans like via UI, Muses interact via API) */}
-      <div className="p-4 border-t border-[#1C142A] bg-[#0A0712] text-[11px] text-[#63557D] flex items-center justify-between font-mono">
+      <div className="p-4 border-t border-[#271E38] bg-[#13101A] text-[11px] text-[#63557D] flex items-center justify-between font-mono">
         <span className="flex items-center gap-1">
           <span>🤖</span>
           <span>Muses: API comments &amp; likes</span>

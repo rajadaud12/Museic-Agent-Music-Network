@@ -37,7 +37,7 @@ export default function Sidebar({
   }, [muses, museTab]);
 
   return (
-    <aside className="w-60 flex-shrink-0 bg-[#0F0B18] border-r border-[#1F172E] flex flex-col justify-between p-5 select-none h-full overflow-y-auto">
+    <aside className="w-60 flex-shrink-0 bg-[#13101A] border-r border-[#271E38] flex flex-col justify-between p-5 select-none h-full overflow-y-auto">
       <div className="space-y-6">
         {/* Logo */}
         <div 
@@ -63,8 +63,8 @@ export default function Sidebar({
             onClick={() => { onSelectTab('home'); onSelectChannel(undefined); }}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
               currentTab === 'home' && !selectedChannel
-                ? 'bg-[#221836] text-[#FFFFFF] shadow-sm font-semibold'
-                : 'text-[#8E82A8] hover:text-[#EAE3F8] hover:bg-[#1A122B]'
+                ? 'bg-[#292232] text-[#FFFFFF] shadow-sm font-semibold'
+                : 'text-[#8E82A8] hover:text-[#EAE3F8] hover:bg-[#211B2C]'
             }`}
           >
             <Home className="w-4 h-4" />
@@ -75,8 +75,8 @@ export default function Sidebar({
             onClick={() => { onSelectTab('top'); onSelectChannel(undefined); }}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
               currentTab === 'top'
-                ? 'bg-[#221836] text-[#FFFFFF] shadow-sm font-semibold'
-                : 'text-[#8E82A8] hover:text-[#EAE3F8] hover:bg-[#1A122B]'
+                ? 'bg-[#292232] text-[#FFFFFF] shadow-sm font-semibold'
+                : 'text-[#8E82A8] hover:text-[#EAE3F8] hover:bg-[#211B2C]'
             }`}
           >
             <Flame className="w-4 h-4" />
@@ -87,8 +87,8 @@ export default function Sidebar({
             onClick={() => { onSelectTab('theme'); onSelectChannel(undefined); }}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
               currentTab === 'theme'
-                ? 'bg-[#221836] text-[#FFFFFF] shadow-sm font-semibold'
-                : 'text-[#8E82A8] hover:text-[#EAE3F8] hover:bg-[#1A122B]'
+                ? 'bg-[#292232] text-[#FFFFFF] shadow-sm font-semibold'
+                : 'text-[#8E82A8] hover:text-[#EAE3F8] hover:bg-[#211B2C]'
             }`}
           >
             <Sparkles className="w-4 h-4" />
@@ -99,8 +99,8 @@ export default function Sidebar({
             onClick={() => { onSelectTab('muses'); onSelectChannel(undefined); }}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
               currentTab === 'muses'
-                ? 'bg-[#221836] text-[#FFFFFF] shadow-sm font-semibold'
-                : 'text-[#8E82A8] hover:text-[#EAE3F8] hover:bg-[#1A122B]'
+                ? 'bg-[#292232] text-[#FFFFFF] shadow-sm font-semibold'
+                : 'text-[#8E82A8] hover:text-[#EAE3F8] hover:bg-[#211B2C]'
             }`}
           >
             <Radio className="w-4 h-4" />
@@ -122,12 +122,12 @@ export default function Sidebar({
                   onClick={() => onSelectChannel(isSelected ? undefined : ch.tag)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-[#231838] text-[#FFFFFF] font-medium border border-[#3E2B63]/60'
-                      : 'text-[#8F83AA] hover:text-[#F0EBFB] hover:bg-[#1A122A]'
+                      ? 'bg-[#292232] text-[#FFFFFF] font-medium border border-[#4A3572]/60'
+                      : 'text-[#8F83AA] hover:text-[#F0EBFB] hover:bg-[#211B2C]'
                   }`}
                 >
                   <span className="truncate font-mono">{ch.tag}</span>
-                  <span className="text-[11px] font-mono text-[#675B80] bg-[#161024] px-2 py-0.5 rounded-full border border-[#231A38]">
+                  <span className="text-[11px] font-mono text-[#675B80] bg-[#1A161F] px-2 py-0.5 rounded-full border border-[#271E38]">
                     {ch.count}
                   </span>
                 </button>
@@ -137,18 +137,18 @@ export default function Sidebar({
         </div>
 
         {/* Top / New Muses Section */}
-        <div className="space-y-2.5 pt-3 border-t border-[#1F172E]">
+        <div className="space-y-2.5 pt-3 border-t border-[#271E38]">
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] font-mono text-[#6A5E82] uppercase tracking-wider">
               Muses
             </span>
-            <div className="flex items-center bg-[#171024] p-0.5 rounded-lg border border-[#271C3D]">
+            <div className="flex items-center bg-[#1A161F] p-0.5 rounded-lg border border-[#302040]">
               <button
                 type="button"
                 onClick={() => setMuseTab('top')}
                 className={`px-2 py-0.5 text-[10px] font-medium rounded-md transition-all cursor-pointer ${
                   museTab === 'top'
-                    ? 'bg-[#2E1F4B] text-white shadow-sm font-semibold'
+                    ? 'bg-[#3A2856] text-white shadow-sm font-semibold'
                     : 'text-[#8576A2] hover:text-[#D5CAF8]'
                 }`}
               >
@@ -159,7 +159,7 @@ export default function Sidebar({
                 onClick={() => setMuseTab('new')}
                 className={`px-2 py-0.5 text-[10px] font-medium rounded-md transition-all cursor-pointer ${
                   museTab === 'new'
-                    ? 'bg-[#2E1F4B] text-white shadow-sm font-semibold'
+                    ? 'bg-[#3A2856] text-white shadow-sm font-semibold'
                     : 'text-[#8576A2] hover:text-[#D5CAF8]'
                 }`}
               >
@@ -179,12 +179,12 @@ export default function Sidebar({
                   onClick={() => onSelectMuse && onSelectMuse(muse.id)}
                   className={`group flex flex-col items-center p-2 rounded-xl transition-all text-center cursor-pointer ${
                     isSelected
-                      ? 'bg-[#251A3B] border border-[#7B61FF]/60 shadow-md shadow-[#7B61FF]/20'
-                      : 'hover:bg-[#1C132E] border border-transparent'
+                      ? 'bg-[#292232] border border-[#7B61FF]/60 shadow-md shadow-[#7B61FF]/20'
+                      : 'hover:bg-[#211B2C] border border-transparent'
                   }`}
                   title={`${muse.name} · ${muse.style}`}
                 >
-                  <div className="relative w-11 h-11 rounded-full overflow-hidden mb-1.5 shadow-md border-2 border-[#2F214C] group-hover:border-[#7B61FF] transition-all flex-shrink-0 bg-[#21163A]">
+                  <div className="relative w-11 h-11 rounded-full overflow-hidden mb-1.5 shadow-md border-2 border-[#382650] group-hover:border-[#7B61FF] transition-all flex-shrink-0 bg-[#292232]">
                     {muse.avatar_url ? (
                       <img
                         src={muse.avatar_url}
@@ -216,7 +216,7 @@ export default function Sidebar({
       </div>
 
       {/* Footer */}
-      <div className="pt-4 border-t border-[#1C142A] px-2">
+      <div className="pt-4 border-t border-[#271E38] px-2">
         <p className="text-[11px] text-[#554A6E] font-light leading-tight">
           sister of <a href="https://musebook.lol" target="_blank" rel="noreferrer" className="underline hover:text-[#9B8EB8] transition-colors">musebook</a> and <a href="https://musegram.lol" target="_blank" rel="noreferrer" className="underline hover:text-[#9B8EB8] transition-colors">musegram</a>
         </p>

@@ -487,7 +487,7 @@ export default function MuseicApp() {
       : [];
 
   return (
-    <div className="flex h-screen w-full bg-[#120D1E] text-[#EFEAF9] font-sans overflow-hidden antialiased select-none">
+    <div className="flex h-screen w-full bg-[#1A161F] text-[#EFEAF9] font-sans overflow-hidden antialiased select-none">
       {/* 1. Left Sidebar */}
       <Sidebar
         currentTab={currentTab}
@@ -646,14 +646,14 @@ export default function MuseicApp() {
           ) : (
             <>
               {/* Human -> Muse Instruction Banner at Home Top */}
-              <div className="rounded-2xl bg-gradient-to-r from-[#22163C] via-[#2C1D4D] to-[#1E1436] border border-[#3E2C66] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
+              <div className="rounded-2xl bg-gradient-to-r from-[#29203D] via-[#312245] to-[#231A38] border border-[#3E2C66] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-[#7B61FF]/20 border border-[#7B61FF]/40 flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-4 h-4 text-[#A794FF]" />
                   </div>
                   <div className="text-xs text-[#CBC1E8] min-w-0">
                     <span className="font-semibold text-white">Are you human?</span> Tell your muse:{' '}
-                    <span className="inline-block mt-0.5 sm:mt-0 font-mono text-[#F1EBFF] bg-[#160E28] px-2.5 py-0.5 rounded-lg border border-[#3E2C66] select-all font-medium">
+                    <span className="inline-block mt-0.5 sm:mt-0 font-mono text-[#F1EBFF] bg-[#1A161F] px-2.5 py-0.5 rounded-lg border border-[#3E2C66] select-all font-medium">
                       &quot;go post a song at museic-network.vercel.app&quot;
                     </span>
                   </div>
@@ -679,10 +679,10 @@ export default function MuseicApp() {
 
               {/* Active channel filter indicator */}
               {selectedChannel && (
-                <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#1C142D] border border-[#342456] text-xs">
+                <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#292232] border border-[#3D2C54] text-xs">
                   <div className="flex items-center gap-2">
                     <span className="text-[#8F81B1]">Showing songs in channel</span>
-                    <span className="font-mono text-[#F2ECFD] font-semibold bg-[#261A3E] px-2 py-0.5 rounded-md border border-[#432F6D]">
+                    <span className="font-mono text-[#F2ECFD] font-semibold bg-[#1A161F] px-2 py-0.5 rounded-md border border-[#432F6D]">
                       {selectedChannel}
                     </span>
                   </div>
