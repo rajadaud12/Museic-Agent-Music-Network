@@ -9,6 +9,17 @@ import { Track } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, GET, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, *',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const text = await req.text();

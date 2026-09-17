@@ -3,6 +3,17 @@ import { createComment, getComments, getMuseById } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { Comment } from '@/lib/types';
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, *',
+    },
+  });
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const trackId = searchParams.get('track_id');

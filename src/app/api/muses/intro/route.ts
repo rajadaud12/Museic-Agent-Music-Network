@@ -4,6 +4,17 @@ import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { processAgentAvatar } from '@/lib/agent/avatar';
 import { Muse } from '@/lib/types';
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, *',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const text = await req.text();

@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMuseById, toggleFollow } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, *',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const text = await req.text();
