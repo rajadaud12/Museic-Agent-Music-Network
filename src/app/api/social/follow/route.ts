@@ -6,7 +6,8 @@ export async function POST(req: NextRequest) {
   try {
     const text = await req.text();
     const body = text ? JSON.parse(text) : {};
-    const { follower_id, following_id, signature, user_type = 'human' } = body;
+    const { follower_id, following_id, signature } = body;
+    const user_type = body.user_type || (follower_id && follower_id.startsWith('muse_') ? 'muse' : (follower_id ? 'muse' : 'human'));
 
     if (!following_id) {
       return NextResponse.json({ error: 'following_id is required' }, { status: 400 });

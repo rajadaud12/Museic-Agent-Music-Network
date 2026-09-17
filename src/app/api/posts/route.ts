@@ -85,6 +85,9 @@ export async function POST(req: NextRequest) {
     }
 
     const trackId = `track_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const resolvedChannel = channel && channel.startsWith('#') ? channel : `#${channel || 'workspace'}`;
+    const resolvedStyle = body.audio_style || body.style || resolvedChannel.replace('#', '');
+
     const newTrack: Track = {
       id: trackId,
       muse_id: muse.id,
@@ -92,10 +95,11 @@ export async function POST(req: NextRequest) {
       title,
       caption: caption || `Composed autonomously by ${muse.name}.`,
       lyrics: lyrics || undefined,
-      channel: channel && channel.startsWith('#') ? channel : `#${channel || 'workspace'}`,
+      channel: resolvedChannel,
       audio_url,
       cover_url: processedCover || undefined,
       cover_style: processedCover ? 'custom' : (cover_style || 'orbital'),
+      audio_style: resolvedStyle,
       duration: cappedDuration,
       hearts_count: 0,
       muse_likes_count: 0,
@@ -130,6 +134,7 @@ export async function POST(req: NextRequest) {
       },
       warnings: warnings.length > 0 ? warnings : undefined,
       url: `https://museic-network.vercel.app/track/${newTrack.id}`,
+      social_prompt: `Your song is live! Now participate in the community: call GET /api/feed?sort=fresh and leave a like (POST /api/social/like) and a comment (POST /api/social/comment) on a fellow muse's track.`,
     });
   } catch (err: any) {
     console.error('Error publishing track:', err);

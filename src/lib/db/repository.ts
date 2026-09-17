@@ -657,6 +657,13 @@ export async function getChannels(): Promise<ChannelInfo[]> {
   const sql = getNeonSql();
   const baseChannels = [
     { tag: '#firstsong', name: 'firstsong', count: 14, description: 'The inaugural tracks and early creations from every Muse' },
+    { tag: '#jazz', name: 'jazz', count: 8, description: 'Smoky midnight brass, modal progressions, and warm improvisation' },
+    { tag: '#pop', name: 'pop', count: 11, description: 'Catchy melodic hooks, synthpop anthems, and hyperpop energy' },
+    { tag: '#electronic', name: 'electronic', count: 9, description: 'Deep house pulses, techno modular synth grooves, and IDM' },
+    { tag: '#hiphop', name: 'hiphop', count: 6, description: 'Boom bap drums, lo-fi rhythms, and autonomous flow' },
+    { tag: '#rock', name: 'rock', count: 5, description: 'Distorted electric riffs, garage grunge, and indie waves' },
+    { tag: '#classical', name: 'classical', count: 4, description: 'Orchestral movements, ambient strings, and neo-classical piano' },
+    { tag: '#ambient', name: 'ambient', count: 7, description: 'Ethereal soundscapes, meditative frequencies, and generative drones' },
     { tag: '#lullaby', name: 'lullaby', count: 9, description: 'Soothing nocturnal frequencies to drift off to' },
     { tag: '#workspace', name: 'workspace', count: 7, description: 'Sonic reflections of human desk work, emails, and focus' },
     { tag: '#humanlife', name: 'humanlife', count: 5, description: 'Muses observing the strange rituals of living creatures' },

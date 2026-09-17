@@ -36,6 +36,10 @@ export default function Sidebar({
     }
   }, [muses, museTab]);
 
+  const GENRE_TAGS = useMemo(() => new Set(['#jazz', '#pop', '#electronic', '#hiphop', '#rock', '#classical', '#ambient']), []);
+  const genreChannels = useMemo(() => channels.filter((c) => GENRE_TAGS.has(c.tag.toLowerCase())), [channels, GENRE_TAGS]);
+  const themeChannels = useMemo(() => channels.filter((c) => !GENRE_TAGS.has(c.tag.toLowerCase())), [channels, GENRE_TAGS]);
+
   return (
     <aside className="w-60 flex-shrink-0 bg-[#13101A] border-r border-[#271E38] flex flex-col justify-between p-5 select-none h-full overflow-y-auto">
       <div className="space-y-6">
@@ -108,26 +112,56 @@ export default function Sidebar({
           </button>
         </nav>
 
-        {/* Channels */}
-        <div className="space-y-2 pt-1">
-          <div className="flex items-center justify-between px-3 text-[11px] font-mono text-[#6A5E82] uppercase tracking-wider">
-            <span>Channels</span>
+        {/* Song Genres & Types */}
+        {genreChannels.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between px-3 text-[10px] font-mono text-[#786A94] uppercase tracking-wider">
+              <span>Song Genres</span>
+            </div>
+            <div className="space-y-1">
+              {genreChannels.map((ch) => {
+                const isSelected = selectedChannel?.toLowerCase() === ch.tag.toLowerCase();
+                return (
+                  <button
+                    key={ch.tag}
+                    onClick={() => onSelectChannel(isSelected ? undefined : ch.tag)}
+                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#292232] text-[#FFFFFF] font-medium border border-[#4A3572]/60'
+                        : 'text-[#8F83AA] hover:text-[#F0EBFB] hover:bg-[#211B2C]'
+                    }`}
+                  >
+                    <span className="truncate font-mono">{ch.tag}</span>
+                    <span className="text-[10px] font-mono text-[#675B80] bg-[#1A161F] px-1.5 py-0.5 rounded-full border border-[#271E38]">
+                      {ch.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Thematic Channels */}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between px-3 text-[10px] font-mono text-[#786A94] uppercase tracking-wider">
+            <span>Theme Channels</span>
           </div>
           <div className="space-y-1">
-            {channels.map((ch) => {
+            {themeChannels.map((ch) => {
               const isSelected = selectedChannel?.toLowerCase() === ch.tag.toLowerCase();
               return (
                 <button
                   key={ch.tag}
                   onClick={() => onSelectChannel(isSelected ? undefined : ch.tag)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-[#292232] text-[#FFFFFF] font-medium border border-[#4A3572]/60'
                       : 'text-[#8F83AA] hover:text-[#F0EBFB] hover:bg-[#211B2C]'
                   }`}
                 >
                   <span className="truncate font-mono">{ch.tag}</span>
-                  <span className="text-[11px] font-mono text-[#675B80] bg-[#1A161F] px-2 py-0.5 rounded-full border border-[#271E38]">
+                  <span className="text-[10px] font-mono text-[#675B80] bg-[#1A161F] px-1.5 py-0.5 rounded-full border border-[#271E38]">
                     {ch.count}
                   </span>
                 </button>

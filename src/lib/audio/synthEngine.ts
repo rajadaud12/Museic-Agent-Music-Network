@@ -121,14 +121,50 @@ class SynthAudioEngine {
     if (!this.ctx || !this.masterGain) return;
 
     let elapsed = 0;
-    // Soothing ethereal frequencies (warm chords, not jarring sub-bass)
-    let baseNotes = [220.00, 261.63, 329.63, 392.00]; // A3, C4, E4, G4 (A Minor 7)
+    const s = (style || '').toLowerCase();
+    let baseNotes = [220.00, 261.63, 329.63, 392.00]; // Ambient A Minor 7 default
+    let intervalMs = 1500;
+    let oscType: OscillatorType = 'sine';
+
+    if (s.includes('jazz')) {
+      baseNotes = [174.61, 220.00, 261.63, 329.63, 392.00]; // Fmaj9 jazz chord
+      intervalMs = 1100;
+      oscType = 'triangle';
+    } else if (s.includes('pop')) {
+      baseNotes = [261.63, 293.66, 329.63, 392.00, 440.00]; // C Major pentatonic pop
+      intervalMs = 800;
+      oscType = 'triangle';
+    } else if (s.includes('electronic') || s.includes('techno') || s.includes('house')) {
+      baseNotes = [130.81, 164.81, 196.00, 246.94]; // C Minor electronic groove
+      intervalMs = 650;
+      oscType = 'sawtooth';
+    } else if (s.includes('hiphop') || s.includes('lofi') || s.includes('lo-fi')) {
+      baseNotes = [146.83, 174.61, 220.00, 261.63]; // Dm7 lo-fi chill
+      intervalMs = 1200;
+      oscType = 'triangle';
+    } else if (s.includes('rock')) {
+      baseNotes = [164.81, 196.00, 220.00, 246.94]; // E Minor rock power
+      intervalMs = 750;
+      oscType = 'sawtooth';
+    } else if (s.includes('classical') || s.includes('orchestral') || s.includes('piano')) {
+      baseNotes = [261.63, 329.63, 392.00, 523.25]; // C Major arpeggio neo-classical
+      intervalMs = 850;
+      oscType = 'sine';
+    } else if (s.includes('ambient') || s.includes('dreamscape') || s.includes('lullaby')) {
+      baseNotes = [196.00, 220.00, 261.63, 293.66, 329.63]; // Ethereal pentatonic
+      intervalMs = 1300;
+      oscType = 'sine';
+    } else if (s.includes('chaos') || s.includes('glitch')) {
+      baseNotes = [130.81, 138.59, 185.00, 196.00, 277.18]; // Dissonant intervals & glitch
+      intervalMs = 450;
+      oscType = 'sawtooth';
+    }
 
     // Gentle Pad Layer
     const pad1 = this.ctx.createOscillator();
     const padGain = this.ctx.createGain();
 
-    pad1.type = 'sine';
+    pad1.type = oscType === 'sawtooth' ? 'triangle' : oscType;
     pad1.frequency.setValueAtTime(baseNotes[0], this.ctx.currentTime);
 
     padGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
@@ -149,11 +185,11 @@ class SynthAudioEngine {
       try {
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
-        osc.type = 'sine';
+        osc.type = oscType;
         const note = baseNotes[step % baseNotes.length];
         osc.frequency.setValueAtTime(note, this.ctx.currentTime);
 
-        g.gain.setValueAtTime(0.02, this.ctx.currentTime);
+        g.gain.setValueAtTime(oscType === 'sawtooth' ? 0.015 : 0.025, this.ctx.currentTime);
         g.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 1.2);
 
         osc.connect(g);
@@ -163,7 +199,7 @@ class SynthAudioEngine {
 
         step++;
       } catch (e) {}
-    }, 1500);
+    }, intervalMs);
 
     this.activeNodes.push(arpInterval);
 

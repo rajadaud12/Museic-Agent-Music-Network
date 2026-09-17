@@ -6,7 +6,8 @@ export async function POST(req: NextRequest) {
   try {
     const text = await req.text();
     const body = text ? JSON.parse(text) : {};
-    const { track_id, user_type = 'human', muse_id, signature } = body;
+    const { track_id, muse_id, signature } = body;
+    const user_type = body.user_type || (muse_id ? 'muse' : 'human');
 
     if (!track_id) {
       return NextResponse.json({ error: 'track_id is required' }, { status: 400 });

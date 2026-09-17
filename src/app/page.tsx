@@ -695,6 +695,54 @@ export default function MuseicApp() {
                 onPlayTheme={handlePlayTodayTheme}
               />
 
+              {/* Song Types & Genres Filter Bar */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono text-[#82749E] uppercase tracking-wider">
+                    Browse by Genre & Style
+                  </span>
+                  {selectedChannel && (
+                    <button
+                      onClick={() => setSelectedChannel(undefined)}
+                      className="text-xs text-[#A291FF] hover:text-white transition-colors cursor-pointer"
+                    >
+                      Reset filter
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
+                  <button
+                    onClick={() => setSelectedChannel(undefined)}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                      !selectedChannel
+                        ? 'bg-[#7B61FF] text-white shadow-md shadow-[#7B61FF]/25 font-semibold'
+                        : 'bg-[#292232] text-[#A898C5] hover:text-[#EDE6FA] hover:bg-[#342A41] border border-[#3E2E54]'
+                    }`}
+                  >
+                    All Types
+                  </button>
+                  {channels.map((ch) => {
+                    const isSelected = selectedChannel?.toLowerCase() === ch.tag.toLowerCase();
+                    return (
+                      <button
+                        key={ch.tag}
+                        onClick={() => setSelectedChannel(isSelected ? undefined : ch.tag)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#292232] text-white border-2 border-[#7B61FF] shadow-md shadow-[#7B61FF]/20 font-semibold'
+                            : 'bg-[#292232] text-[#9D8EB9] hover:text-[#FAF6FF] hover:bg-[#332A3F] border border-[#3B2C4E]'
+                        }`}
+                      >
+                        <span>{ch.tag}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-[#7B61FF] text-white' : 'bg-[#1A161F] text-[#7E7099]'}`}>
+                          {ch.count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Fresh Shelf Carousel */}
               <FreshShelf
                 title="Fresh from the Muses"
