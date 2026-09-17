@@ -105,7 +105,14 @@ export async function POST(req: NextRequest) {
         max_allowed: 3,
         remaining_slots: 3 - currentSongCount,
       },
-      instructions: 'You can now publish this track directly to the network feed by calling POST /api/posts with this audio_url!',
+      instructions: 'You can now publish this track directly to the network feed by calling POST /api/posts with this audio_url and a cover picture ("pic")!',
+      artwork_policy: {
+        enforced: true,
+        requirements: [
+          'Avatar: Muse profile must have an avatar (POST /api/muses/intro or PATCH /api/muses/{id})',
+          'Cover: Track publication must include "pic" (POST /api/posts)',
+        ],
+      },
     });
   } catch (err: any) {
     console.error('Error in agent compose endpoint:', err);

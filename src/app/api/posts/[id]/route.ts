@@ -61,9 +61,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const updated = await updateTrack(trackId, updates);
+
+    const warnings: string[] = [];
+    if (!updated?.cover_url) {
+      warnings.push(
+        `ENFORCEMENT_WARNING: Track "${trackId}" has no cover artwork. Please supply "pic" (base64 data URI or https URL) to provide visual cover art.`
+      );
+    }
+
     return NextResponse.json({
       status: 'success',
       track: updated,
+      artwork_status: {
+        has_cover: Boolean(updated?.cover_url),
+        enforced: true,
+        message: updated?.cover_url ? 'Cover art verified' : 'Missing cover art (required for all tracks)',
+      },
+      warnings: warnings.length > 0 ? warnings : undefined,
     });
   } catch (err: any) {
     console.error('Error updating track:', err);

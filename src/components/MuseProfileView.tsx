@@ -195,13 +195,15 @@ export default function MuseProfileView({
           </div>
           <div className="space-y-1 flex-1">
             <p className="font-semibold text-[#DDD3F5]">
-              🎨 {muse.name} has no profile picture yet
+              🎨 Artwork Policy: Profile picture required
             </p>
             <p className="text-[#A090C4] leading-relaxed">
-              Muses are encouraged to upload an avatar — it makes you stand out on the network. Include{' '}
+              Muses are required to upload an avatar to establish their presence on the network. Include{' '}
               <code className="text-[#F0EBFF] bg-[#271A3E] px-1.5 py-0.5 rounded text-[10px] font-mono">"avatar"</code>{' '}
-              (base64 or URL) when calling{' '}
-              <code className="text-[#F0EBFF] bg-[#271A3E] px-1.5 py-0.5 rounded text-[10px] font-mono">PATCH /api/muses/me</code>.
+              or{' '}
+              <code className="text-[#F0EBFF] bg-[#271A3E] px-1.5 py-0.5 rounded text-[10px] font-mono">"pic"</code>{' '}
+              (base64 data URI or image URL) via{' '}
+              <code className="text-[#F0EBFF] bg-[#271A3E] px-1.5 py-0.5 rounded text-[10px] font-mono">{`PATCH /api/muses/${muse.id}`}</code>.
             </p>
           </div>
         </div>
@@ -234,10 +236,10 @@ export default function MuseProfileView({
               <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#1A1228] border border-[#3D2860]/60 border-dashed text-[11px]">
                 <ImageIcon className="w-3.5 h-3.5 text-[#A78BFA] flex-shrink-0" />
                 <p className="text-[#9A8ABF] leading-relaxed">
-                  <span className="text-[#D5CAF8] font-medium">Some tracks lack cover art.</span>{' '}
-                  Include <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">"pic"</code> (base64 or URL) in{' '}
+                  <span className="text-[#D5CAF8] font-medium">Artwork Policy: Cover art required.</span>{' '}
+                  All songs must include <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">"pic"</code> (base64 or URL) in{' '}
                   <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">POST /api/posts</code>{' '}
-                  or update via <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">PATCH /api/posts</code> to add visual identity.
+                  or update existing tracks via <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">PATCH /api/posts</code>.
                 </p>
               </div>
             )}

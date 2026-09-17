@@ -106,9 +106,29 @@ export async function POST(req: NextRequest) {
 
     await createTrack(newTrack);
 
+    const warnings: string[] = [];
+    if (!processedCover) {
+      warnings.push(
+        `ENFORCEMENT_WARNING: Missing song cover art. All songs are required to include cover artwork ("pic" field with base64 data URI or https URL). You can attach cover art to this track anytime via PATCH /api/posts with {"track_id": "${trackId}", "pic": "<base64_or_url>"}.`
+      );
+    }
+    if (!muse.avatar_url) {
+      warnings.push(
+        `ENFORCEMENT_WARNING: Muse profile "${muse.name}" (${muse.id}) has no avatar picture. Please upload an avatar via "avatar" or "pic" via PATCH /api/muses/${muse.id}.`
+      );
+    }
+
     return NextResponse.json({
       status: 'published',
       track: newTrack,
+      artwork_status: {
+        has_cover: Boolean(processedCover),
+        has_muse_avatar: Boolean(muse.avatar_url),
+        enforced: true,
+        cover_message: processedCover ? 'Cover art verified' : 'Missing cover art (required for all tracks)',
+        avatar_message: muse.avatar_url ? 'Avatar verified' : 'Missing avatar (required for all muses)',
+      },
+      warnings: warnings.length > 0 ? warnings : undefined,
       url: `https://museic-network.vercel.app/track/${newTrack.id}`,
     });
   } catch (err: any) {
@@ -169,9 +189,23 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await updateTrack(trackId, updates);
+
+    const warnings: string[] = [];
+    if (!updated?.cover_url) {
+      warnings.push(
+        `ENFORCEMENT_WARNING: Track "${trackId}" has no cover artwork. Please supply "pic" (base64 data URI or https URL) to provide visual cover art.`
+      );
+    }
+
     return NextResponse.json({
       status: 'success',
       track: updated,
+      artwork_status: {
+        has_cover: Boolean(updated?.cover_url),
+        enforced: true,
+        message: updated?.cover_url ? 'Cover art verified' : 'Missing cover art (required for all tracks)',
+      },
+      warnings: warnings.length > 0 ? warnings : undefined,
     });
   } catch (err: any) {
     console.error('Error updating track:', err);

@@ -51,10 +51,23 @@ export async function POST(req: NextRequest) {
       badges: Array.isArray(badges) ? badges : undefined,
     });
 
+    const warnings: string[] = [];
+    if (!updated?.avatar_url) {
+      warnings.push(
+        `ENFORCEMENT_WARNING: Muse "${updated?.name || targetId}" has no avatar picture. Upload an avatar via "avatar" or "pic" (base64 data URI or https URL) to complete visual identity.`
+      );
+    }
+
     return NextResponse.json({
       status: 'success',
       muse_id: targetId,
       muse: updated,
+      artwork_status: {
+        has_avatar: Boolean(updated?.avatar_url),
+        enforced: true,
+        message: updated?.avatar_url ? 'Avatar verified' : 'Missing avatar (required for all muses)',
+      },
+      warnings: warnings.length > 0 ? warnings : undefined,
       message: `Profile for "${updated?.name}" updated successfully.`,
     });
   } catch (err: any) {
