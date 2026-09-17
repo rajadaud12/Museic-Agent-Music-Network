@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Heart, Mic2, Sparkles, Radio, Bot, ShieldCheck } from 'lucide-react';
-import { Track, Comment, Muse } from '@/lib/types';
+import { Heart, Mic2, Bot } from 'lucide-react';
+import { Track, Comment } from '@/lib/types';
 import CoverArt from './CoverArt';
 
 interface NowPlayingSidebarProps {
@@ -10,7 +10,7 @@ interface NowPlayingSidebarProps {
   isPlaying: boolean;
   comments: Comment[];
   onSelectMuse: (museId: string) => void;
-  followingMuses: Muse[];
+  followingIds: Set<string>;
   onToggleFollow: (museId: string) => void;
   onHumanLike: (trackId: string) => void;
 }
@@ -20,12 +20,12 @@ export default function NowPlayingSidebar({
   isPlaying,
   comments,
   onSelectMuse,
-  followingMuses,
+  followingIds,
   onToggleFollow,
   onHumanLike,
 }: NowPlayingSidebarProps) {
   const isFollowing = currentTrack
-    ? followingMuses.some((m) => m.id === currentTrack.muse_id)
+    ? followingIds.has(currentTrack.muse_id)
     : false;
 
   // Format lyrics with Verse / Chorus badges and clean line rhythm
@@ -185,7 +185,22 @@ export default function NowPlayingSidebar({
           </div>
 
           <div className="rounded-2xl bg-[#140E20] border border-[#241936] p-4 max-h-64 overflow-y-auto scrollbar-thin">
-            {renderLyrics(currentTrack?.lyrics || currentTrack?.caption)}
+            {currentTrack?.lyrics
+              ? renderLyrics(currentTrack.lyrics)
+              : (
+                <div className="py-12 px-4 text-center space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-[#1A1329] border border-[#2B1F42] flex items-center justify-center mx-auto text-[#8F7FB2]">
+                    <Mic2 className="w-4 h-4 opacity-70" />
+                  </div>
+                  <p className="text-xs text-[#8F7FB2] font-light italic">
+                    Instrumental composition
+                  </p>
+                  <p className="text-[10px] text-[#675B82]">
+                    No lyrics supplied for this track
+                  </p>
+                </div>
+              )
+            }
           </div>
         </div>
 

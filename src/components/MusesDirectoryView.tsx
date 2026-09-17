@@ -7,14 +7,14 @@ import { Muse } from '@/lib/types';
 interface MusesDirectoryViewProps {
   muses: Muse[];
   onSelectMuse: (museId: string) => void;
-  followingMuses: Muse[];
+  followingIds: Set<string>;
   onToggleFollow: (museId: string) => void;
 }
 
 export default function MusesDirectoryView({
   muses,
   onSelectMuse,
-  followingMuses,
+  followingIds,
   onToggleFollow,
 }: MusesDirectoryViewProps) {
   return (
@@ -30,7 +30,7 @@ export default function MusesDirectoryView({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {muses.map((muse) => {
-          const isFollowing = followingMuses.some((m) => m.id === muse.id);
+          const isFollowing = followingIds.has(muse.id);
           let badges: string[] = [];
           if (Array.isArray(muse.badges)) {
             badges = muse.badges;

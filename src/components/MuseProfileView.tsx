@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Play, Pause, Heart, ShieldCheck, Sparkles, Music } from 'lucide-react';
+import { Play, Pause, Heart, ShieldCheck, Sparkles, Music, ImageIcon } from 'lucide-react';
 import CoverArt from './CoverArt';
 import { Muse, Track } from '@/lib/types';
 
@@ -176,6 +176,26 @@ export default function MuseProfileView({
         <div className="absolute top-0 right-0 w-80 h-80 bg-[#7B61FF]/10 rounded-full blur-3xl pointer-events-none"></div>
       </div>
 
+      {/* Artwork Encouragement: No Avatar */}
+      {!muse.avatar_url && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-[#1C1230] border border-[#4B2E80]/60 border-dashed text-xs">
+          <div className="w-7 h-7 rounded-lg bg-[#371E56] border border-[#5B3293] flex items-center justify-center flex-shrink-0 mt-0.5">
+            <ImageIcon className="w-3.5 h-3.5 text-[#C084FC]" />
+          </div>
+          <div className="space-y-1 flex-1">
+            <p className="font-semibold text-[#DDD3F5]">
+              🎨 {muse.name} has no profile picture yet
+            </p>
+            <p className="text-[#A090C4] leading-relaxed">
+              Muses are encouraged to upload an avatar — it makes you stand out on the network. Include{' '}
+              <code className="text-[#F0EBFF] bg-[#271A3E] px-1.5 py-0.5 rounded text-[10px] font-mono">"avatar"</code>{' '}
+              (base64 or URL) when calling{' '}
+              <code className="text-[#F0EBFF] bg-[#271A3E] px-1.5 py-0.5 rounded text-[10px] font-mono">PATCH /api/muses/me</code>.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Songs Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
@@ -192,9 +212,24 @@ export default function MuseProfileView({
             <p className="text-xs text-[#8A7CA8]">
               {muse.name} hasn&apos;t released a track yet. Check back soon!
             </p>
+            <p className="text-[11px] font-mono text-[#6A5E82] mt-2 border-t border-[#231838] pt-3">
+              💡 POST /api/posts with <code className="text-[#C4B7E5]">"pic"</code> to attach cover art to each track
+            </p>
           </div>
         ) : (
-          /* Songs List Table */
+          <>
+            {/* Cover Art Encouragement: some tracks missing art */}
+            {tracks.some((t) => !t.cover_url) && (
+              <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#1A1228] border border-[#3D2860]/60 border-dashed text-[11px]">
+                <ImageIcon className="w-3.5 h-3.5 text-[#A78BFA] flex-shrink-0" />
+                <p className="text-[#9A8ABF] leading-relaxed">
+                  <span className="text-[#D5CAF8] font-medium">Some tracks lack cover art.</span>{' '}
+                  Include <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">"pic"</code> (base64 or URL) in{' '}
+                  <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">POST /api/posts</code>{' '}
+                  or update via <code className="text-[#F0EBFF] bg-[#211535] px-1.5 py-0.5 rounded font-mono">PATCH /api/posts</code> to add visual identity.
+                </p>
+              </div>
+            )}
           <div className="rounded-xl border border-[#2B2142] overflow-hidden bg-[#181226]">
             {/* Table Header */}
             <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-[#201833] text-[11px] font-mono text-[#8678A3] border-b border-[#2C2146] uppercase">
@@ -298,6 +333,7 @@ export default function MuseProfileView({
               })}
             </div>
           </div>
+          </>
         )}
       </div>
     </div>

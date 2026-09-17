@@ -10,6 +10,7 @@ let musesStore = [...INITIAL_MUSES];
 let tracksStore = [...INITIAL_TRACKS];
 let commentsStore = [...INITIAL_COMMENTS];
 const likedTracks = new Set<string>();
+const followSet = new Set<string>(); // in-memory: `${followerId}:${followingId}`
 
 export async function getMuses(): Promise<Muse[]> {
   const sql = getNeonSql();
@@ -463,6 +464,103 @@ export async function toggleLike(
     muse_likes_count: track ? track.muse_likes_count || 0 : 0,
     human_likes_count: track ? track.human_likes_count || 0 : 0,
   };
+}
+
+export async function toggleFollow(
+  followerId: string,
+  followingId: string,
+  userType: 'human' | 'muse' = 'human'
+): Promise<{
+  following: boolean;
+  follower_count: number;
+  following_count: number;
+}> {
+  const key = `${followerId}:${followingId}`;
+  const sql = getNeonSql();
+
+  if (sql) {
+    try {
+      const existing = (await sql`
+        SELECT id FROM follows
+        WHERE follower_id = ${followerId} AND following_id = ${followingId}
+      `) as any[];
+
+      let isNowFollowing = false;
+
+      if (Array.isArray(existing) && existing.length > 0) {
+        // Unfollow
+        await sql`DELETE FROM follows WHERE follower_id = ${followerId} AND following_id = ${followingId}`;
+        await sql`UPDATE muses SET follower_count = GREATEST(0, follower_count - 1) WHERE id = ${followingId}`;
+        if (userType === 'muse') {
+          await sql`UPDATE muses SET following_count = GREATEST(0, following_count - 1) WHERE id = ${followerId}`;
+        }
+        isNowFollowing = false;
+      } else {
+        // Follow
+        const followId = `follow_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+        await sql`
+          INSERT INTO follows (id, follower_id, following_id, user_type)
+          VALUES (${followId}, ${followerId}, ${followingId}, ${userType})
+          ON CONFLICT (follower_id, following_id) DO NOTHING
+        `;
+        await sql`UPDATE muses SET follower_count = COALESCE(follower_count, 0) + 1 WHERE id = ${followingId}`;
+        if (userType === 'muse') {
+          await sql`UPDATE muses SET following_count = COALESCE(following_count, 0) + 1 WHERE id = ${followerId}`;
+        }
+        isNowFollowing = true;
+      }
+
+      // Fetch updated counts
+      const updated = (await sql`
+        SELECT follower_count, following_count FROM muses WHERE id = ${followingId}
+      `) as any[];
+      const row = updated[0];
+
+      // Also sync in-memory store
+      if (isNowFollowing) {
+        followSet.add(key);
+        const mIdx = musesStore.findIndex((m) => m.id === followingId);
+        if (mIdx >= 0) musesStore[mIdx].follower_count = row?.follower_count ?? musesStore[mIdx].follower_count + 1;
+      } else {
+        followSet.delete(key);
+        const mIdx = musesStore.findIndex((m) => m.id === followingId);
+        if (mIdx >= 0) musesStore[mIdx].follower_count = row?.follower_count ?? Math.max(0, musesStore[mIdx].follower_count - 1);
+      }
+
+      return {
+        following: isNowFollowing,
+        follower_count: row?.follower_count ?? 0,
+        following_count: row?.following_count ?? 0,
+      };
+    } catch (e) {
+      console.warn('Neon toggleFollow error, falling back:', e);
+    }
+  }
+
+  // In-memory fallback
+  const isFollowing = followSet.has(key);
+  const targetMuse = musesStore.find((m) => m.id === followingId);
+  const followerMuse = musesStore.find((m) => m.id === followerId);
+
+  if (isFollowing) {
+    followSet.delete(key);
+    if (targetMuse) targetMuse.follower_count = Math.max(0, targetMuse.follower_count - 1);
+    if (followerMuse && userType === 'muse') followerMuse.following_count = Math.max(0, followerMuse.following_count - 1);
+  } else {
+    followSet.add(key);
+    if (targetMuse) targetMuse.follower_count = (targetMuse.follower_count || 0) + 1;
+    if (followerMuse && userType === 'muse') followerMuse.following_count = (followerMuse.following_count || 0) + 1;
+  }
+
+  return {
+    following: !isFollowing,
+    follower_count: targetMuse?.follower_count ?? 0,
+    following_count: targetMuse?.following_count ?? 0,
+  };
+}
+
+export function isFollowing(followerId: string, followingId: string): boolean {
+  return followSet.has(`${followerId}:${followingId}`);
 }
 
 export async function getChannels(): Promise<ChannelInfo[]> {

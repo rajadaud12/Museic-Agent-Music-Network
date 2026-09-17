@@ -29,6 +29,7 @@ export default function MuseicApp() {
     resets_at: 'midnight UTC'
   });
   const [followingMuses, setFollowingMuses] = useState<Muse[]>([]);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isHomePromptCopied, setIsHomePromptCopied] = useState<boolean>(false);
 
@@ -72,7 +73,6 @@ export default function MuseicApp() {
         const musesData = await musesRes.json();
         if (musesData.muses) {
           setMuses(musesData.muses);
-          setFollowingMuses(musesData.muses.slice(0, 4));
         }
       }
     } catch (err) {
@@ -312,18 +312,85 @@ export default function MuseicApp() {
     } catch (e) {}
   };
 
-  const handleToggleFollow = (museId: string) => {
+  const handleToggleFollow = async (museId: string) => {
     const targetMuse = muses.find((m) => m.id === museId);
     if (!targetMuse) return;
 
-    setFollowingMuses((prev) => {
-      const exists = prev.some((m) => m.id === museId);
-      if (exists) {
-        return prev.filter((m) => m.id !== museId);
+    const isCurrentlyFollowing = followingIds.has(museId);
+
+    // Optimistic UI update
+    setFollowingIds((prev) => {
+      const next = new Set(prev);
+      if (isCurrentlyFollowing) {
+        next.delete(museId);
       } else {
-        return [...prev, targetMuse];
+        next.add(museId);
       }
+      return next;
     });
+    setFollowingMuses((prev) =>
+      isCurrentlyFollowing ? prev.filter((m) => m.id !== museId) : [...prev, targetMuse]
+    );
+    // Optimistic count bump
+    setMuses((prev) =>
+      prev.map((m) =>
+        m.id === museId
+          ? { ...m, follower_count: isCurrentlyFollowing ? Math.max(0, m.follower_count - 1) : m.follower_count + 1 }
+          : m
+      )
+    );
+
+    try {
+      const res = await fetch('/api/social/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ following_id: museId, user_type: 'human' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Sync real follower_count back from server
+        setMuses((prev) =>
+          prev.map((m) =>
+            m.id === museId ? { ...m, follower_count: data.follower_count } : m
+          )
+        );
+        // Also update profileMuse if we are viewing this muse's profile
+        if (profileMuse?.id === museId) {
+          setProfileMuse((prev) => prev ? { ...prev, follower_count: data.follower_count } : prev);
+        }
+        // Keep followingIds in sync with server truth
+        setFollowingIds((prev) => {
+          const next = new Set(prev);
+          if (data.following) {
+            next.add(museId);
+          } else {
+            next.delete(museId);
+          }
+          return next;
+        });
+        setFollowingMuses((prev) => {
+          const without = prev.filter((m) => m.id !== museId);
+          return data.following ? [...without, { ...targetMuse, follower_count: data.follower_count }] : without;
+        });
+      }
+    } catch (e) {
+      // Revert optimistic update on error
+      setFollowingIds((prev) => {
+        const next = new Set(prev);
+        if (isCurrentlyFollowing) next.add(museId); else next.delete(museId);
+        return next;
+      });
+      setFollowingMuses((prev) =>
+        isCurrentlyFollowing ? [...prev, targetMuse] : prev.filter((m) => m.id !== museId)
+      );
+      setMuses((prev) =>
+        prev.map((m) =>
+          m.id === museId
+            ? { ...m, follower_count: isCurrentlyFollowing ? m.follower_count + 1 : Math.max(0, m.follower_count - 1) }
+            : m
+        )
+      );
+    }
   };
 
   const [profileMuse, setProfileMuse] = useState<Muse | null>(null);
@@ -405,6 +472,8 @@ export default function MuseicApp() {
     return tracks.filter((t) => t.channel.toLowerCase() === dailyTheme.tag.toLowerCase());
   }, [tracks, dailyTheme.tag]);
 
+  const isFollowingMuse = (museId: string) => followingIds.has(museId);
+
   const selectedMuse =
     profileMuse && profileMuse.id === selectedMuseId
       ? profileMuse
@@ -462,7 +531,7 @@ export default function MuseicApp() {
               isPlaying={isPlaying}
               onPlayTrack={handlePlayTrack}
               onPlayAll={() => museTracks.length && handlePlayTrack(museTracks[0])}
-              isFollowing={followingMuses.some((m) => m.id === selectedMuse.id)}
+              isFollowing={isFollowingMuse(selectedMuse.id)}
               onToggleFollow={handleToggleFollow}
               onLikeTrack={handleLikeTrack}
               onSelectChannel={(ch) => {
@@ -478,7 +547,7 @@ export default function MuseicApp() {
             <MusesDirectoryView
               muses={muses}
               onSelectMuse={handleSelectMuse}
-              followingMuses={followingMuses}
+              followingIds={followingIds}
               onToggleFollow={handleToggleFollow}
             />
           ) : currentTab === 'top' ? (
@@ -669,7 +738,7 @@ export default function MuseicApp() {
         isPlaying={isPlaying}
         comments={trackComments}
         onSelectMuse={handleSelectMuse}
-        followingMuses={followingMuses}
+        followingIds={followingIds}
         onToggleFollow={handleToggleFollow}
         onHumanLike={handleLikeTrack}
       />
