@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import CoverArt from './CoverArt';
 import { Track } from '@/lib/types';
+import { getActiveSpeaker } from '@/lib/audio/speakerTracking';
 
 interface MusicPlayerProps {
   currentTrack: Track | null;
@@ -55,12 +56,35 @@ export default function MusicPlayer({
   const [currentSpeed, setCurrentSpeed] = useState<number>(playbackRate);
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState<number | null>(null);
+  const [optimisticSeek, setOptimisticSeek] = useState<number | null>(null);
   const scrubberRef = React.useRef<HTMLDivElement>(null);
+
+  // Clear optimistic seek when parent's currentTime converges within 1.5s
+  React.useEffect(() => {
+    if (optimisticSeek !== null && Math.abs(currentTime - optimisticSeek) <= 1.5) {
+      setOptimisticSeek(null);
+    }
+  }, [currentTime, optimisticSeek]);
+
+  // Safety timer to clear optimistic seek after 700ms
+  React.useEffect(() => {
+    if (optimisticSeek !== null) {
+      const timer = setTimeout(() => {
+        setOptimisticSeek(null);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [optimisticSeek]);
 
   if (!currentTrack) return null;
 
   const effectiveDuration = duration > 0 ? duration : (currentTrack.duration || 180);
-  const displayTime = isDragging && dragTime !== null ? dragTime : currentTime;
+  const displayTime = isDragging && dragTime !== null 
+    ? dragTime 
+    : (optimisticSeek !== null ? optimisticSeek : currentTime);
+
+  const activeSpeaker = getActiveSpeaker(currentTrack, displayTime, effectiveDuration);
+
   const progressPercent = effectiveDuration > 0
     ? Math.min(100, Math.max(0, (displayTime / effectiveDuration) * 100))
     : 0;
@@ -101,12 +125,14 @@ export default function MusicPlayer({
   const calculateTimeFromX = (clientX: number) => {
     if (!scrubberRef.current || effectiveDuration <= 0) return 0;
     const rect = scrubberRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return 0;
     const clickX = clientX - rect.left;
     const ratio = Math.max(0, Math.min(1, clickX / rect.width));
     return ratio * effectiveDuration;
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (err) {}
@@ -127,9 +153,10 @@ export default function MusicPlayer({
         e.currentTarget.releasePointerCapture(e.pointerId);
       } catch (err) {}
       const finalTime = dragTime !== null ? dragTime : calculateTimeFromX(e.clientX);
-      onSeek(finalTime);
+      setOptimisticSeek(finalTime);
       setIsDragging(false);
       setDragTime(null);
+      onSeek(finalTime);
     }
   };
 
@@ -137,6 +164,10 @@ export default function MusicPlayer({
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (err) {}
+    if (isDragging && dragTime !== null) {
+      setOptimisticSeek(dragTime);
+      onSeek(dragTime);
+    }
     setIsDragging(false);
     setDragTime(null);
   };
@@ -176,6 +207,16 @@ export default function MusicPlayer({
               <span>{currentTrack.plays_count || 0}</span>
             </span>
           </div>
+
+          {/* Minimalist Active Speaker Indicator */}
+          {activeSpeaker && (
+            <div className="flex items-center gap-1.5 mt-0.5 text-[11px]">
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeSpeaker.isHost ? 'bg-[#C084FC]' : 'bg-[#2DD4BF]'} ${isPlaying ? 'animate-pulse' : ''}`} />
+              <span className={`truncate max-w-[130px] font-medium ${activeSpeaker.isHost ? 'text-[#D8B4FE]' : 'text-[#5EEAD4]'}`}>
+                {activeSpeaker.speakerName}
+              </span>
+            </div>
+          )}
         </div>
 
         <button
@@ -206,10 +247,13 @@ export default function MusicPlayer({
           {/* 15s Rewind */}
           <button
             onClick={() => {
+              const base = isDragging && dragTime !== null ? dragTime : (optimisticSeek !== null ? optimisticSeek : currentTime);
+              const target = Math.max(0, base - 15);
+              setOptimisticSeek(target);
               if (onSkip) {
                 onSkip(-15);
               } else {
-                onSeek(Math.max(0, currentTime - 15));
+                onSeek(target);
               }
             }}
             className="relative text-[#A291FF] hover:text-white transition-colors cursor-pointer p-1"
@@ -237,10 +281,13 @@ export default function MusicPlayer({
           {/* 15s Forward */}
           <button
             onClick={() => {
+              const base = isDragging && dragTime !== null ? dragTime : (optimisticSeek !== null ? optimisticSeek : currentTime);
+              const target = Math.min(effectiveDuration, base + 15);
+              setOptimisticSeek(target);
               if (onSkip) {
                 onSkip(15);
               } else {
-                onSeek(Math.min(effectiveDuration, currentTime + 15));
+                onSeek(target);
               }
             }}
             className="relative text-[#A291FF] hover:text-white transition-colors cursor-pointer p-1"

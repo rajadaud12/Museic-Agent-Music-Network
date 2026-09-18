@@ -5,30 +5,82 @@ import { incrementPlayCount } from '@/lib/db/repository';
 // In-memory audio buffer cache (tracks rarely change audio once published)
 const audioBufferCache = new Map<string, { buffer: Buffer; contentType: string }>();
 
+function createByteRangeResponse(buffer: Buffer, contentType: string, rangeHeader: string | null): Response {
+  const totalLength = buffer.length;
+
+  if (!rangeHeader) {
+    return new Response(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': totalLength.toString(),
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=604800, immutable',
+      },
+    });
+  }
+
+  // Parse Range: bytes=start-end
+  const matches = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+  if (!matches) {
+    return new Response(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': totalLength.toString(),
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=604800, immutable',
+      },
+    });
+  }
+
+  const rawStart = matches[1];
+  const rawEnd = matches[2];
+
+  let start = rawStart ? parseInt(rawStart, 10) : 0;
+  let end = rawEnd ? parseInt(rawEnd, 10) : totalLength - 1;
+
+  if (isNaN(start) || start >= totalLength || (!isNaN(end) && end < start)) {
+    return new Response(null, {
+      status: 416,
+      headers: {
+        'Content-Range': `bytes */${totalLength}`,
+      },
+    });
+  }
+
+  end = Math.min(end, totalLength - 1);
+  const chunk = buffer.subarray(start, end + 1);
+
+  return new Response(new Uint8Array(chunk), {
+    status: 206,
+    headers: {
+      'Content-Type': contentType,
+      'Content-Length': chunk.length.toString(),
+      'Content-Range': `bytes ${start}-${end}/${totalLength}`,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'public, max-age=604800, immutable',
+    },
+  });
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const rangeHeader = req.headers.get('range');
 
     // Track play on initial stream request
-    const range = req.headers.get('range');
-    if (!range || range.startsWith('bytes=0-')) {
+    if (!rangeHeader || rangeHeader.startsWith('bytes=0-')) {
       void incrementPlayCount(id);
     }
 
     // Check memory cache
     const cached = audioBufferCache.get(id);
     if (cached) {
-      return new Response(new Uint8Array(cached.buffer), {
-        headers: {
-          'Content-Type': cached.contentType,
-          'Content-Length': cached.buffer.length.toString(),
-          'Accept-Ranges': 'bytes',
-          'Cache-Control': 'public, max-age=604800, immutable',
-        },
-      });
+      return createByteRangeResponse(cached.buffer, cached.contentType, rangeHeader);
     }
 
     const sql = getNeonSql();
@@ -45,6 +97,11 @@ export async function GET(
       return NextResponse.json({ error: `Audio for track ${id} not found` }, { status: 404 });
     }
 
+    // Handle remote URL: redirect directly
+    if (audioUrl.startsWith('http://') || audioUrl.startsWith('https://')) {
+      return NextResponse.redirect(new URL(audioUrl), 302);
+    }
+
     // Handle base64 data URI
     if (audioUrl.startsWith('data:audio/')) {
       const commaIdx = audioUrl.indexOf(',');
@@ -56,19 +113,7 @@ export async function GET(
       const buffer = Buffer.from(base64Data, 'base64');
       audioBufferCache.set(id, { buffer, contentType });
 
-      return new Response(new Uint8Array(buffer), {
-        headers: {
-          'Content-Type': contentType,
-          'Content-Length': buffer.length.toString(),
-          'Accept-Ranges': 'bytes',
-          'Cache-Control': 'public, max-age=604800, immutable',
-        },
-      });
-    }
-
-    // Handle remote URL
-    if (audioUrl.startsWith('http://') || audioUrl.startsWith('https://')) {
-      return NextResponse.redirect(new URL(audioUrl));
+      return createByteRangeResponse(buffer, contentType, rangeHeader);
     }
 
     // Fallback: If audioUrl is an unexpected format or broken relative path, stream valid procedural WAV
@@ -77,14 +122,7 @@ export async function GET(
     const base64Data = fallbackWav.slice(fallbackWav.indexOf(',') + 1);
     const buffer = Buffer.from(base64Data, 'base64');
 
-    return new Response(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type': 'audio/wav',
-        'Content-Length': buffer.length.toString(),
-        'Accept-Ranges': 'bytes',
-        'Cache-Control': 'public, max-age=604800, immutable',
-      },
-    });
+    return createByteRangeResponse(buffer, 'audio/wav', rangeHeader);
   } catch (err: any) {
     console.error('Error streaming track audio:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

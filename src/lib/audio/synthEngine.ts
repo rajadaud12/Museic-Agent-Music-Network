@@ -19,6 +19,8 @@ class SynthAudioEngine {
   private timerInterval: any = null;
   private currentSessionId: number = 0;
   private currentPlaybackRate: number = 1.0;
+  private isSeeking: boolean = false;
+  private seekCooldownTimer: any = null;
 
   public onTimeUpdate: ((currentSec: number, durationSec: number) => void) | null = null;
   public onTrackEnded: (() => void) | null = null;
@@ -47,7 +49,9 @@ class SynthAudioEngine {
 
       this.htmlAudio.onloadedmetadata = () => {
         if (this.htmlAudio && isFinite(this.htmlAudio.duration) && this.htmlAudio.duration > 0) {
-          this.currentDuration = this.htmlAudio.duration;
+          if (!this.currentDuration || this.htmlAudio.duration >= this.currentDuration * 0.7) {
+            this.currentDuration = this.htmlAudio.duration;
+          }
         }
         if (this.pendingSeek !== null && this.htmlAudio) {
           try {
@@ -63,15 +67,42 @@ class SynthAudioEngine {
 
       this.htmlAudio.ondurationchange = () => {
         if (this.htmlAudio && isFinite(this.htmlAudio.duration) && this.htmlAudio.duration > 0) {
-          this.currentDuration = this.htmlAudio.duration;
+          if (!this.currentDuration || this.htmlAudio.duration >= this.currentDuration * 0.7) {
+            this.currentDuration = this.htmlAudio.duration;
+          }
+        }
+      };
+
+      this.htmlAudio.onseeking = () => {
+        this.isSeeking = true;
+      };
+
+      this.htmlAudio.onseeked = () => {
+        this.isSeeking = false;
+        if (this.seekCooldownTimer) {
+          clearTimeout(this.seekCooldownTimer);
+          this.seekCooldownTimer = null;
+        }
+        if (this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
+          this.currentElapsed = this.htmlAudio.currentTime;
+          if (this.onTimeUpdate) {
+            this.onTimeUpdate(this.htmlAudio.currentTime, this.getDuration());
+          }
         }
       };
 
       this.htmlAudio.ontimeupdate = () => {
+        // While seeking or when audio element is resolving seek, ignore ontimeupdate
+        // to prevent stale playback frames from snapping the progress bar backward
+        if (this.isSeeking || (this.htmlAudio && this.htmlAudio.seeking)) {
+          return;
+        }
         if (this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
           this.currentElapsed = this.htmlAudio.currentTime;
           if (this.htmlAudio.duration && isFinite(this.htmlAudio.duration) && this.htmlAudio.duration > 0) {
-            this.currentDuration = this.htmlAudio.duration;
+            if (!this.currentDuration || this.htmlAudio.duration >= this.currentDuration * 0.7) {
+              this.currentDuration = this.htmlAudio.duration;
+            }
           }
           if (this.onTimeUpdate) {
             this.onTimeUpdate(this.htmlAudio.currentTime, this.getDuration());
@@ -328,17 +359,25 @@ class SynthAudioEngine {
   }
 
   public seek(seconds: number) {
-    const clamped = Math.max(0, seconds);
+    const dur = this.getDuration();
+    const clamped = Math.max(0, Math.min(dur, seconds));
     this.currentElapsed = clamped;
+    this.isSeeking = true;
+
+    if (this.seekCooldownTimer) {
+      clearTimeout(this.seekCooldownTimer);
+    }
+    // Safety cooldown in case seeked doesn't fire immediately (e.g. paused)
+    this.seekCooldownTimer = setTimeout(() => {
+      this.isSeeking = false;
+    }, 450);
 
     if (this.htmlAudio && this.htmlAudio.src) {
       try {
-        const dur = this.getDuration();
-        const target = Math.min(dur, clamped);
         if (this.htmlAudio.readyState >= 1) {
-          this.htmlAudio.currentTime = target;
+          this.htmlAudio.currentTime = clamped;
         } else {
-          this.pendingSeek = target;
+          this.pendingSeek = clamped;
         }
       } catch (e) {
         console.warn('Seek error on audio:', e);
@@ -347,13 +386,15 @@ class SynthAudioEngine {
 
     // Immediately trigger UI update so scrubbing feels instantaneous
     if (this.onTimeUpdate) {
-      this.onTimeUpdate(clamped, this.getDuration());
+      this.onTimeUpdate(clamped, dur);
     }
   }
 
   public skip(seconds: number): number {
+    // If currently seeking or audio is paused, use this.currentElapsed
+    // so successive rapid clicks (+15s, +15s) stack correctly instead of snapping back!
     let current = this.currentElapsed;
-    if (this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
+    if (!this.isSeeking && this.htmlAudio && !isNaN(this.htmlAudio.currentTime) && this.htmlAudio.readyState >= 1) {
       current = this.htmlAudio.currentTime;
     }
     const dur = this.getDuration();
@@ -373,6 +414,11 @@ class SynthAudioEngine {
 
   public stop() {
     this.isPlaying = false;
+    this.isSeeking = false;
+    if (this.seekCooldownTimer) {
+      clearTimeout(this.seekCooldownTimer);
+      this.seekCooldownTimer = null;
+    }
     this.currentSessionId++;
     this.currentTrackId = null;
     this.currentAudioUrl = null;

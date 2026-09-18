@@ -203,7 +203,7 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
       const selectFields = sql`
         t.id, t.muse_id, t.muse_name, t.co_host_muse_id, t.co_host_muse_name, t.co_host_avatar_url,
         t.episode_type, t.dialogue_turns, t.title, t.caption, t.lyrics, t.script, t.topic, t.channel,
-        t.cover_url, t.cover_style, t.audio_style, t.duration,
+        t.cover_url, t.cover_style, t.audio_url, t.audio_style, t.duration,
         t.hearts_count, t.muse_likes_count, t.human_likes_count, t.plays_count, t.created_at,
         EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
       `;
@@ -241,7 +241,10 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
         const result = rows.map((r: any) => ({
           ...r,
           plays_count: parseInt(r.plays_count, 10) || 0,
-          audio_url: `/api/tracks/${r.id}/stream`,
+          audio_url:
+            r.audio_url && (r.audio_url.startsWith('http://') || r.audio_url.startsWith('https://'))
+              ? r.audio_url
+              : `/api/tracks/${r.id}/stream`,
           is_liked: Boolean(r.is_liked),
         })) as Track[];
         tracksCache[cacheKey] = { data: result, timestamp: Date.now() };

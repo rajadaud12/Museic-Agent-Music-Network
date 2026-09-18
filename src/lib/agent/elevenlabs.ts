@@ -469,6 +469,70 @@ export async function synthesizeSingleTurnBuffer(
 }
 
 /**
+ * Strips ID3v2 tags, Xing/Info VBR headers, and ID3v1 tags from an MP3 buffer,
+ * returning only clean, continuous MPEG Layer 3 audio frames that any browser can decode and seek.
+ */
+export function extractPureMp3Audio(buffer: Buffer): Buffer {
+  let pos = 0;
+  const maxSearch = Math.min(4096, buffer.length - 4);
+  let audioStart = -1;
+
+  while (pos < maxSearch) {
+    if (buffer[pos] === 0xff && (buffer[pos + 1] & 0xe0) === 0xe0 && (buffer[pos + 1] & 0x18) !== 0x08) {
+      const b1 = buffer[pos + 1];
+      const b2 = buffer[pos + 2];
+
+      const mpegVer = (b1 >> 3) & 3;
+      const layer = (b1 >> 1) & 3;
+      const bitrateIdx = (b2 >> 4) & 0x0f;
+      const sampleRateIdx = (b2 >> 2) & 0x03;
+      const padding = (b2 >> 1) & 0x01;
+
+      if (layer === 1 && bitrateIdx > 0 && bitrateIdx < 15 && sampleRateIdx < 3) {
+        let bitrate = 0;
+        let sampleRate = 0;
+
+        if (mpegVer === 3) {
+          const BITRATES = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
+          const SAMPLE_RATES = [44100, 48000, 32000];
+          bitrate = BITRATES[bitrateIdx];
+          sampleRate = SAMPLE_RATES[sampleRateIdx];
+        } else {
+          const BITRATES = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
+          const SAMPLE_RATES = mpegVer === 2 ? [22050, 24000, 16000] : [11025, 12000, 8000];
+          bitrate = BITRATES[bitrateIdx];
+          sampleRate = SAMPLE_RATES[sampleRateIdx];
+        }
+
+        const frameLength = Math.floor((mpegVer === 3 ? 144 : 72) * bitrate * 1000 / sampleRate) + padding;
+
+        if (frameLength > 0 && pos + frameLength + 1 < buffer.length) {
+          const nextPos = pos + frameLength;
+          if (buffer[nextPos] === 0xff && (buffer[nextPos + 1] & 0xe0) === 0xe0) {
+            audioStart = pos;
+            const frameData = buffer.subarray(pos, pos + frameLength);
+            if (frameData.indexOf('Xing') !== -1 || frameData.indexOf('Info') !== -1) {
+              audioStart = nextPos;
+            }
+            break;
+          }
+        }
+      }
+    }
+    pos++;
+  }
+
+  if (audioStart === -1) audioStart = 0;
+
+  let end = buffer.length;
+  if (end > 128 && buffer[end - 128] === 0x54 && buffer[end - 127] === 0x41 && buffer[end - 126] === 0x47) {
+    end -= 128;
+  }
+
+  return buffer.subarray(audioStart, end);
+}
+
+/**
  * Compiles a 2-Muse collaborative dialogue podcast:
  * 1. Synthesizes each turn in parallel with the respective muse's authentic voice
  * 2. Stitches turn MP3 audio buffers together into a single master MP3
@@ -532,8 +596,10 @@ export async function compileDialoguePodcastAudio(
     };
   }
 
-  // Concatenate MP3 frames into single master audio track
-  const masterBuffer = Buffer.concat(validBuffers);
+  // Strip ID3 tags and Xing/Info VBR headers from each turn chunk
+  // so the master MP3 is a single continuous MPEG audio stream
+  const cleanAudioBuffers = validBuffers.map(extractPureMp3Audio);
+  const masterBuffer = Buffer.concat(cleanAudioBuffers);
 
   // Upload to Cloudinary CDN
   const uploadRes = await uploadAudioToCloudinary(masterBuffer, 'podcasts');

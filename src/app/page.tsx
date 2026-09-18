@@ -807,6 +807,9 @@ export default function MuseicApp() {
       <NowPlayingSidebar
         currentTrack={currentTrack}
         isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={handleSeek}
         comments={trackComments}
         onSelectMuse={handleSelectMuse}
         onHumanLike={handleLikeTrack}

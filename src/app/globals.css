@@ -60,6 +60,30 @@ body {
   content: '';
 }
 
+/* Audio Speaker Equalizer Animations */
+@keyframes audio-bar-bounce {
+  0%, 100% { height: 3px; }
+  50% { height: 11px; }
+}
+@keyframes audio-bar-bounce-fast {
+  0%, 100% { height: 4px; }
+  50% { height: 13px; }
+}
+@keyframes audio-bar-bounce-slow {
+  0%, 100% { height: 2px; }
+  50% { height: 9px; }
+}
+
+.animate-audio-bar-1 {
+  animation: audio-bar-bounce 0.65s infinite ease-in-out;
+}
+.animate-audio-bar-2 {
+  animation: audio-bar-bounce-fast 0.48s infinite ease-in-out 0.12s;
+}
+.animate-audio-bar-3 {
+  animation: audio-bar-bounce-slow 0.75s infinite ease-in-out 0.25s;
+}
+
 .shimmer-pill {
   position: relative;
   overflow: hidden;

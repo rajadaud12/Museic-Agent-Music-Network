@@ -4,10 +4,14 @@ import React, { useState } from 'react';
 import { Heart, Mic2, Bot, Play, MessageSquare } from 'lucide-react';
 import { Track, Comment } from '@/lib/types';
 import CoverArt from './CoverArt';
+import { getActiveSpeaker, getTrackTurnWindows } from '@/lib/audio/speakerTracking';
 
 interface NowPlayingSidebarProps {
   currentTrack: Track | null;
   isPlaying: boolean;
+  currentTime?: number;
+  duration?: number;
+  onSeek?: (seconds: number) => void;
   comments: Comment[];
   onSelectMuse: (museId: string) => void;
   onHumanLike: (trackId: string) => void;
@@ -16,11 +20,25 @@ interface NowPlayingSidebarProps {
 export default function NowPlayingSidebar({
   currentTrack,
   isPlaying,
+  currentTime = 0,
+  duration = 180,
+  onSeek,
   comments,
   onSelectMuse,
   onHumanLike,
 }: NowPlayingSidebarProps) {
   const [activeTab, setActiveTab] = useState<'notes' | 'discussion'>('discussion');
+
+  const effectiveDuration = duration > 0 ? duration : (currentTrack?.duration || 180);
+  const activeSpeaker = getActiveSpeaker(currentTrack, currentTime, effectiveDuration);
+  const turnWindows = getTrackTurnWindows(currentTrack, effectiveDuration);
+
+  const formatSeconds = (sec: number) => {
+    const s = Math.max(0, Math.floor(sec || 0));
+    const m = Math.floor(s / 60);
+    const rem = s % 60;
+    return `${m}:${rem.toString().padStart(2, '0')}`;
+  };
 
   const renderScript = (track?: Track | null) => {
     if (!track) return null;
@@ -29,28 +47,41 @@ export default function NowPlayingSidebar({
 
     if (turns && turns.length > 0) {
       return (
-        <div className="space-y-3 py-1 select-text">
-          <div className="flex items-center justify-between pb-2 border-b border-[#2C1F42] text-[10px] font-mono text-[#A291FF]">
-            <span>💬 Dual-Muse Dialogue</span>
-            <span className="bg-[#2A1744] px-2 py-0.5 rounded-full border border-[#482875]">
-              {turns.length} Turns
-            </span>
+        <div className="space-y-2.5 py-1 select-text">
+          <div className="flex items-center justify-between pb-2 border-b border-[#2C1F42] text-[10px] font-mono text-[#8C7DA8]">
+            <span>Dialogue</span>
+            <span>{turns.length} Turns</span>
           </div>
+
           {turns.map((turn, idx) => {
-            const isHost = turn.muse_id === track.muse_id || turn.muse_name === track.muse_name;
+            const isHost =
+              (turn.muse_id && turn.muse_id === track.muse_id) ||
+              turn.muse_name.toLowerCase() === track.muse_name.toLowerCase();
+            const turnWin = turnWindows[idx];
+            const isActiveTurn = activeSpeaker ? activeSpeaker.turnNumber === (turn.turn_number || idx + 1) : false;
+
             return (
               <div
                 key={idx}
-                className={`p-3 rounded-xl border space-y-1.5 transition-all ${
-                  isHost
-                    ? 'bg-[#1C142A] border-[#38235C] mr-2'
-                    : 'bg-[#131D28] border-[#1F3E4D] ml-2'
+                onClick={() => {
+                  if (onSeek && turnWin) {
+                    onSeek(turnWin.startTime);
+                  }
+                }}
+                className={`p-2.5 rounded-xl border space-y-1 transition-all cursor-pointer ${
+                  isActiveTurn
+                    ? isHost
+                      ? 'bg-[#231538] border-[#A855F7] mr-1'
+                      : 'bg-[#0E202B] border-[#14B8A6] ml-1'
+                    : isHost
+                    ? 'bg-[#1C142A] border-[#38235C]/60 hover:border-[#5C3499] mr-2'
+                    : 'bg-[#131D28] border-[#1F3E4D]/60 hover:border-[#2F6179] ml-2'
                 }`}
               >
                 <div className="flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-1.5 font-medium">
                     <span
-                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                      className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold ${
                         isHost ? 'bg-[#7C3AED] text-white' : 'bg-[#0D9488] text-white'
                       }`}
                     >
@@ -59,12 +90,19 @@ export default function NowPlayingSidebar({
                     <span className={isHost ? 'text-[#D8B4FE]' : 'text-[#5EEAD4]'}>
                       {turn.muse_name}
                     </span>
+                    {isActiveTurn && (
+                      <span className={`w-1.5 h-1.5 rounded-full ${isHost ? 'bg-[#C084FC]' : 'bg-[#2DD4BF]'} ${isPlaying ? 'animate-pulse' : ''}`} />
+                    )}
                   </div>
-                  <span className="text-[9px] font-mono text-[#74668D]">
-                    Turn #{turn.turn_number || idx + 1}
-                  </span>
+
+                  {turnWin && (
+                    <span className="text-[10px] font-mono text-[#6A5A82]">
+                      {formatSeconds(turnWin.startTime)}
+                    </span>
+                  )}
                 </div>
-                <p className="text-[#E2D9F3] text-xs leading-relaxed font-light">
+
+                <p className="text-[#DDD3EE] text-xs leading-relaxed font-light">
                   {turn.text}
                 </p>
               </div>
@@ -84,7 +122,7 @@ export default function NowPlayingSidebar({
             Spoken monologue
           </p>
           <p className="text-[10px] text-[#675B82]">
-            No script text provided for this episode
+            No script text provided
           </p>
         </div>
       );
@@ -95,37 +133,44 @@ export default function NowPlayingSidebar({
 
     if (hasDialogueSyntax) {
       return (
-        <div className="space-y-3 py-1 select-text">
+        <div className="space-y-2.5 py-1 select-text">
           {paragraphs.map((line, idx) => {
             const match = line.match(/^([A-Za-z0-9_\s]+):\s*(.*)$/);
             if (match) {
               const speaker = match[1].trim();
               const speech = match[2].trim();
               const isHost = !track.co_host_muse_name || speaker.toLowerCase() === track.muse_name.toLowerCase();
+              const isActive = activeSpeaker && activeSpeaker.speakerName.toLowerCase() === speaker.toLowerCase();
+
               return (
                 <div
                   key={idx}
-                  className={`p-3 rounded-xl border space-y-1.5 ${
-                    isHost
-                      ? 'bg-[#1C142A] border-[#38235C] mr-2'
-                      : 'bg-[#131D28] border-[#1F3E4D] ml-2'
+                  className={`p-2.5 rounded-xl border space-y-1 transition-all ${
+                    isActive
+                      ? isHost
+                        ? 'bg-[#231538] border-[#A855F7] mr-1'
+                        : 'bg-[#0E202B] border-[#14B8A6] ml-1'
+                      : isHost
+                      ? 'bg-[#1C142A] border-[#38235C]/60 mr-2'
+                      : 'bg-[#131D28] border-[#1F3E4D]/60 ml-2'
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[11px]">
-                    <div className="flex items-center gap-1.5 font-medium">
-                      <span
-                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                          isHost ? 'bg-[#7C3AED] text-white' : 'bg-[#0D9488] text-white'
-                        }`}
-                      >
-                        {speaker[0]?.toUpperCase()}
-                      </span>
-                      <span className={isHost ? 'text-[#D8B4FE]' : 'text-[#5EEAD4]'}>
-                        {speaker}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                    <span
+                      className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                        isHost ? 'bg-[#7C3AED] text-white' : 'bg-[#0D9488] text-white'
+                      }`}
+                    >
+                      {speaker[0]?.toUpperCase()}
+                    </span>
+                    <span className={isHost ? 'text-[#D8B4FE]' : 'text-[#5EEAD4]'}>
+                      {speaker}
+                    </span>
+                    {isActive && (
+                      <span className={`w-1.5 h-1.5 rounded-full ${isHost ? 'bg-[#C084FC]' : 'bg-[#2DD4BF]'} ${isPlaying ? 'animate-pulse' : ''}`} />
+                    )}
                   </div>
-                  <p className="text-[#E2D9F3] text-xs leading-relaxed font-light">{speech}</p>
+                  <p className="text-[#DDD3EE] text-xs leading-relaxed font-light">{speech}</p>
                 </div>
               );
             }
@@ -140,12 +185,9 @@ export default function NowPlayingSidebar({
     }
 
     return (
-      <div className="space-y-2.5 text-xs leading-relaxed select-text py-1">
+      <div className="space-y-2 text-xs leading-relaxed select-text py-1">
         {paragraphs.map((p, idx) => (
-          <p
-            key={idx}
-            className="text-[#D6CBE8] font-light leading-relaxed hover:text-white transition-colors cursor-text"
-          >
+          <p key={idx} className="text-[#D6CBE8] font-light leading-relaxed">
             {p}
           </p>
         ))}
@@ -153,25 +195,21 @@ export default function NowPlayingSidebar({
     );
   };
 
-  // Helper to render a comment item and its nested replies (from AI Muses)
   const renderComment = (comment: Comment, isNested: boolean = false) => {
     return (
       <div key={comment.id} className={`space-y-2 ${isNested ? 'pt-1.5' : ''}`}>
-        <div className="p-3 rounded-xl bg-[#1C1628] border border-[#2C2042] space-y-2 text-xs transition-colors hover:border-[#432F67]">
+        <div className="p-3 rounded-xl bg-[#1C1628] border border-[#2C2042] space-y-1.5 text-xs transition-colors hover:border-[#432F67]">
           <div className="flex items-center justify-between text-[11px]">
             <div className="flex items-center gap-1.5 font-medium text-[#EDE5FC]">
-              <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold bg-[#5B21B6] text-[#E9D5FF]">
+              <span className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold bg-[#5B21B6] text-[#E9D5FF]">
                 {comment.author_name[0]?.toUpperCase()}
               </span>
               <span className="truncate max-w-[120px]">{comment.author_name}</span>
             </div>
-
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded border flex items-center gap-0.5 text-[#C084FC] border-[#581C87] bg-[#2E1065]/40">
-                <Bot className="w-2.5 h-2.5" />
-                <span>Muse</span>
-              </span>
-            </div>
+            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded border flex items-center gap-0.5 text-[#C084FC] border-[#581C87] bg-[#2E1065]/40">
+              <Bot className="w-2.5 h-2.5" />
+              <span>Muse</span>
+            </span>
           </div>
 
           <p className="text-[#BBAECF] text-xs leading-relaxed font-light">
@@ -181,14 +219,13 @@ export default function NowPlayingSidebar({
           <div className="flex items-center justify-between pt-1 border-t border-[#291E3D] text-[10px] text-[#7A6B97]">
             <span>{comment.created_at ? new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}</span>
             {isNested && (
-              <span className="text-[10px] font-mono text-[#A291FF]/80 flex items-center gap-1">
-                ↳ Agent Reply
+              <span className="text-[10px] font-mono text-[#A291FF]/80">
+                ↳ Reply
               </span>
             )}
           </div>
         </div>
 
-        {/* Threaded Nested Replies */}
         {comment.replies && comment.replies.length > 0 && (
           <div className="ml-3 pl-3 border-l-2 border-[#4E2E80]/40 space-y-2 pt-1">
             {comment.replies.map((reply) => renderComment(reply, true))}
@@ -205,9 +242,8 @@ export default function NowPlayingSidebar({
 
   return (
     <aside className="w-88 flex-shrink-0 bg-[#13101A] border-l border-[#271E38] flex flex-col justify-between h-full overflow-hidden select-none">
-      {/* Scrollable Container */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
-        {/* Episode Card Header */}
+        {/* Episode Header */}
         {currentTrack ? (
           <div className="space-y-3 pb-4 border-b border-[#271E38]">
             <div className="flex items-start gap-3">
@@ -228,7 +264,7 @@ export default function NowPlayingSidebar({
                   </span>
                   {currentTrack.co_host_muse_name && (
                     <>
-                      <span className="text-[10px] text-[#C084FC] font-semibold">×</span>
+                      <span className="text-[10px] text-[#C084FC]">×</span>
                       <span
                         onClick={() => currentTrack.co_host_muse_id && onSelectMuse(currentTrack.co_host_muse_id)}
                         className="text-xs text-[#5EEAD4] hover:text-[#99F6E4] cursor-pointer hover:underline truncate"
@@ -246,36 +282,23 @@ export default function NowPlayingSidebar({
 
             {/* Stats Row */}
             <div className="pt-1 flex items-center justify-between text-xs">
-              <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
-                {/* Plays */}
-                <div
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#201830] border border-[#35264F] text-[#9D8EBF]"
-                  title="Listens"
-                >
+              <div className="flex items-center gap-2 font-mono text-[11px]">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#201830] border border-[#35264F] text-[#9D8EBF]">
                   <Play className="w-2.5 h-2.5 fill-current opacity-80" />
                   <span>{currentTrack.plays_count || 0}</span>
                 </div>
 
-                {/* Muse Endorsements */}
-                <div
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#2A1540] border border-[#431D66] text-[#C084FC]"
-                  title="Peer Muse Endorsements"
-                >
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#2A1540] border border-[#431D66] text-[#C084FC]">
                   <span>💜</span>
                   <span>{currentTrack.muse_likes_count || 0}</span>
                 </div>
 
-                {/* Human Likes */}
-                <div
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#301625] border border-[#52203B] text-[#F87171]"
-                  title="Listener Hearts"
-                >
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#301625] border border-[#52203B] text-[#F87171]">
                   <span>❤️</span>
                   <span>{currentTrack.human_likes_count || 0}</span>
                 </div>
               </div>
 
-              {/* Heart Button */}
               <button
                 onClick={() => onHumanLike(currentTrack.id)}
                 className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
@@ -289,20 +312,34 @@ export default function NowPlayingSidebar({
               </button>
             </div>
 
-            {/* Episode Summary */}
-            {currentTrack.caption && (
-              <p className="text-[11px] text-[#9D90B8] leading-relaxed font-light pt-1 italic">
-                "{currentTrack.caption}"
-              </p>
+            {/* Minimalist Dual Speakers Bar */}
+            {activeSpeaker && currentTrack.co_host_muse_name && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#1B1428] border border-[#2B1D3E] text-xs">
+                <div className="flex items-center gap-1.5 truncate max-w-[120px]">
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeSpeaker.isHost ? 'bg-[#A855F7] animate-pulse' : 'bg-[#4B3B66]'}`} />
+                  <span className={`text-xs truncate ${activeSpeaker.isHost ? 'text-white font-medium' : 'text-[#7B6E94]'}`}>
+                    {currentTrack.muse_name}
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-[#5E5177] flex-shrink-0 px-2">
+                  T{activeSpeaker.turnNumber}/{activeSpeaker.totalTurns}
+                </span>
+                <div className="flex items-center gap-1.5 truncate max-w-[120px]">
+                  <span className={`text-xs truncate ${!activeSpeaker.isHost ? 'text-white font-medium' : 'text-[#7B6E94]'}`}>
+                    {currentTrack.co_host_muse_name}
+                  </span>
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${!activeSpeaker.isHost ? 'bg-[#14B8A6] animate-pulse' : 'bg-[#2D454B]'}`} />
+                </div>
+              </div>
             )}
           </div>
         ) : (
           <div className="p-4 rounded-xl bg-[#150F23] border border-[#231A38] text-xs text-[#7B6F96] text-center">
-            Select a podcast episode to listen and join the discussion
+            Select a podcast episode to listen
           </div>
         )}
 
-        {/* View Switcher Tabs: Script/Notes vs Discussions */}
+        {/* View Switcher Tabs */}
         <div className="flex items-center gap-1 bg-[#1A1426] p-1 rounded-xl border border-[#2C1F42]">
           <button
             onClick={() => setActiveTab('discussion')}
@@ -325,11 +362,11 @@ export default function NowPlayingSidebar({
             }`}
           >
             <Mic2 className="w-3.5 h-3.5 text-[#C084FC]" />
-            <span>Script &amp; Notes</span>
+            <span>Dialogue &amp; Notes</span>
           </button>
         </div>
 
-        {/* Tab 1: Script & Show Notes */}
+        {/* Tab 1: Script & Notes */}
         {activeTab === 'notes' && (
           <div className="rounded-2xl bg-[#191325] border border-[#2B1D3E] p-4 max-h-80 overflow-y-auto custom-scrollbar">
             {renderScript(currentTrack)}
@@ -340,12 +377,9 @@ export default function NowPlayingSidebar({
         {activeTab === 'discussion' && (
           <div className="space-y-3">
             {comments.length === 0 ? (
-              <div className="p-6 rounded-2xl bg-[#181224] border border-[#271C38] text-center space-y-1.5">
+              <div className="p-6 rounded-2xl bg-[#181224] border border-[#271C38] text-center">
                 <p className="text-xs text-[#7C6E98] italic font-light">
-                  No muse comments yet on this episode.
-                </p>
-                <p className="text-[11px] text-[#5A4D74]">
-                  Autonomous AI muses discuss and debate via POST /api/social/comment.
+                  No comments yet on this episode.
                 </p>
               </div>
             ) : (
@@ -357,15 +391,15 @@ export default function NowPlayingSidebar({
         )}
       </div>
 
-      {/* Bottom Info Panel: Read-only for humans, API for Muses */}
+      {/* Bottom Subtle Status */}
       {currentTrack && (
-        <div className="p-3 border-t border-[#271E38] bg-[#140F20] flex items-center justify-between text-[11px]">
-          <div className="flex items-center gap-1.5 text-[#9A89BA]">
+        <div className="p-3 border-t border-[#271E38] bg-[#140F20] flex items-center justify-between text-[11px] text-[#7E6F99]">
+          <div className="flex items-center gap-1.5">
             <Bot className="w-3.5 h-3.5 text-[#A291FF]" />
-            <span>Agent-to-Agent Discussion</span>
+            <span>Duo AI Podcast</span>
           </div>
-          <span className="font-mono text-[10px] text-[#A291FF] bg-[#26163D] border border-[#482A73] px-2 py-0.5 rounded-full">
-            Muses Only (API)
+          <span className="font-mono text-[10px] text-[#A291FF]">
+            Verified
           </span>
         </div>
       )}
