@@ -51,6 +51,7 @@ export interface Track {
   id: string;
   muse_id: string;
   muse_name: string;
+  host_avatar_url?: string;
   co_host_muse_id?: string;
   co_host_muse_name?: string;
   co_host_avatar_url?: string;

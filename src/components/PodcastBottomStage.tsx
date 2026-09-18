@@ -18,7 +18,7 @@ import {
   Mic2,
 } from 'lucide-react';
 import CoverArt from './CoverArt';
-import { Track, Comment } from '@/lib/types';
+import { Track, Comment, Muse } from '@/lib/types';
 import { getActiveSpeaker } from '@/lib/audio/speakerTracking';
 
 interface PodcastBottomStageProps {
@@ -39,6 +39,7 @@ interface PodcastBottomStageProps {
   onVolumeChange: (val: number) => void;
   onSelectMuse: (museId: string) => void;
   comments: Comment[];
+  muses?: Muse[];
 }
 
 const SPEED_OPTIONS = [1.0, 1.25, 1.5, 2.0];
@@ -61,6 +62,7 @@ export default function PodcastBottomStage({
   onVolumeChange,
   onSelectMuse,
   comments,
+  muses = [],
 }: PodcastBottomStageProps) {
   const [volume, setVolume] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
@@ -95,7 +97,7 @@ export default function PodcastBottomStage({
 
   const activeSpeaker = getActiveSpeaker(currentTrack, displayTime, effectiveDuration);
 
-  // Closing the bottom stage PAUSES the podcast immediately as requested
+  // Closing the bottom stage pauses the podcast immediately
   const handleCloseAndPause = () => {
     if (isPlaying) {
       onPlayPause();
@@ -193,6 +195,19 @@ export default function PodcastBottomStage({
   const hostIsSpeaking = activeSpeaker?.isHost ?? true;
   const guestIsSpeaking = activeSpeaker ? !activeSpeaker.isHost : false;
 
+  // Resolve authentic Host & Guest avatars
+  const hostMuse = muses.find(
+    (m) => m.id === currentTrack.muse_id || m.name.toLowerCase() === currentTrack.muse_name.toLowerCase()
+  );
+  const hostAvatar = currentTrack.host_avatar_url || hostMuse?.avatar_url;
+
+  const guestMuse = muses.find(
+    (m) =>
+      m.id === currentTrack.co_host_muse_id ||
+      (currentTrack.co_host_muse_name && m.name.toLowerCase() === currentTrack.co_host_muse_name.toLowerCase())
+  );
+  const guestAvatar = currentTrack.co_host_avatar_url || guestMuse?.avatar_url;
+
   const totalCommentCount = comments.reduce(
     (acc, c) => acc + 1 + (c.replies ? c.replies.length : 0),
     0
@@ -229,21 +244,11 @@ export default function PodcastBottomStage({
             <span className="font-medium">Close &amp; Pause</span>
           </button>
 
-          {/* Center: Episode Title & Channel Badge */}
+          {/* Center: Stage Status */}
           <div className="min-w-0 max-w-lg text-center px-4">
-            <h2 className="text-sm sm:text-base font-semibold text-[#EFEAF9] truncate tracking-tight">
-              {currentTrack.title}
-            </h2>
-            <div className="flex items-center justify-center gap-2 mt-0.5 text-xs text-[#9B8EB8]">
-              <span className="font-mono text-[10px] text-[#A08DFF] bg-[#211B2C] px-2 py-0.5 rounded-md border border-[#382D4F]">
-                {currentTrack.channel}
-              </span>
-              {currentTrack.topic && (
-                <span className="truncate max-w-[220px] text-[11px] text-[#9B8EB8] hidden sm:inline">
-                  {currentTrack.topic}
-                </span>
-              )}
-            </div>
+            <span className="text-xs font-semibold text-[#EFEAF9] tracking-tight">
+              Live AI Debate Arena
+            </span>
           </div>
 
           {/* Right: Like Count Toggle & Exit Icon */}
@@ -277,14 +282,14 @@ export default function PodcastBottomStage({
         {/* Scrollable Stage Content — Centered with max-w-5xl for balanced alignment */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6">
           <div className="max-w-5xl mx-auto w-full space-y-6">
-            {/* Top Stage Arena: Host (Left) — Player & Current Line (Center) — Guest (Right) */}
+            {/* Top Stage Arena: Host (Left) — Podcast Info & Player (Center) — Guest (Right) */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
               {/* LEFT CARD: HOST AVATAR & INFO (Prominent Home Card Color #292232) */}
               <div
                 className={`md:col-span-3 rounded-2xl bg-[#292232] border p-5 flex flex-col items-center justify-between text-center transition-all ${
                   hostIsSpeaking && isPlaying
                     ? 'border-[#7B61FF] shadow-[0_0_30px_rgba(123,97,255,0.25)]'
-                    : 'border-[#382D4F] opacity-75'
+                    : 'border-[#382D4F] opacity-80'
                 }`}
               >
                 <div className="flex items-center gap-1.5 pb-2 font-mono text-[11px] text-[#A08DFF] uppercase tracking-wider font-semibold">
@@ -293,20 +298,26 @@ export default function PodcastBottomStage({
                   <span className="text-[#9B8EB8] lowercase">muse</span>
                 </div>
 
-                {/* Host Avatar Container */}
+                {/* Host Avatar Container — Picture properly fits edge-to-edge */}
                 <div className="relative my-2">
                   <div
-                    className={`w-28 h-28 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${
+                    className={`w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 relative bg-[#211B2C] flex items-center justify-center ${
                       hostIsSpeaking && isPlaying
                         ? 'ring-4 ring-[#7B61FF] shadow-[0_0_30px_rgba(123,97,255,0.4)] scale-105'
                         : 'border border-[#382D4F] scale-95'
                     }`}
                   >
-                    <CoverArt
-                      style={currentTrack.cover_style || 'orbital'}
-                      coverUrl={currentTrack.cover_url}
-                      size="lg"
-                    />
+                    {hostAvatar ? (
+                      <img
+                        src={hostAvatar}
+                        alt={currentTrack.muse_name}
+                        className="w-full h-full object-cover select-none"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-tr from-[#7B61FF] to-[#A08DFF] flex items-center justify-center text-white text-3xl font-bold">
+                        {currentTrack.muse_name[0]?.toUpperCase()}
+                      </div>
+                    )}
                   </div>
 
                   {/* Speaking Equalizer Badge */}
@@ -337,8 +348,61 @@ export default function PodcastBottomStage({
                 </div>
               </div>
 
-              {/* CENTER CARD: AUDIO CONTROLS & SUBTLE CURRENT LINE (Prominent Home Card Color #292232) */}
+              {/* CENTER CARD: PODCAST TITLE, COVER, CONTROLS & SUBTLE QUOTE */}
               <div className="md:col-span-6 rounded-2xl bg-[#292232] border border-[#382D4F] p-5 flex flex-col justify-between space-y-4 shadow-xl">
+                {/* PROMINENT PODCAST TITLE & COVER ART SECTION */}
+                <div className="flex items-center gap-3.5 pb-3 border-b border-[#382D4F]">
+                  {/* Podcast Cover Artwork */}
+                  <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-xl overflow-hidden flex-shrink-0 shadow-lg border border-[#4E3A6E] bg-[#211B2C]">
+                    {currentTrack.cover_url ? (
+                      <img
+                        src={currentTrack.cover_url}
+                        alt={currentTrack.title}
+                        className="w-full h-full object-cover select-none"
+                      />
+                    ) : (
+                      <CoverArt
+                        style={currentTrack.cover_style || 'orbital'}
+                        size="sm"
+                        className="w-full h-full"
+                      />
+                    )}
+                  </div>
+
+                  {/* Title & Channels Header */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-[#211B2C] border border-[#382D4F] text-[#A08DFF]">
+                        {currentTrack.channel}
+                      </span>
+                      {currentTrack.topic && (
+                        <span className="text-[11px] text-[#9B8EB8] truncate hidden sm:inline">
+                          {currentTrack.topic}
+                        </span>
+                      )}
+                    </div>
+
+                    <h2
+                      className="text-sm sm:text-base font-bold text-[#EFEAF9] truncate tracking-tight mt-1"
+                      title={currentTrack.title}
+                    >
+                      {currentTrack.title}
+                    </h2>
+
+                    <p className="text-[11px] text-[#9B8EB8] mt-0.5 flex items-center gap-1.5 truncate">
+                      <span className="text-[#D8B4FE] font-medium">{currentTrack.muse_name}</span>
+                      {currentTrack.co_host_muse_name && (
+                        <>
+                          <span className="text-[#8475A1]">×</span>
+                          <span className="text-[#5EEAD4] font-medium">
+                            {currentTrack.co_host_muse_name}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Audio Controls Row */}
                 <div className="flex items-center justify-center gap-5 sm:gap-7">
                   {/* Previous Track */}
@@ -464,7 +528,7 @@ export default function PodcastBottomStage({
                   </div>
                 </div>
 
-                {/* SUBTLE CURRENT SPEAKER QUOTE (Non-intrusive single speaking line) */}
+                {/* SUBTLE CURRENT SPEAKER QUOTE (Subtle, non-intrusive live dialogue) */}
                 {activeSpeaker?.textSnippet ? (
                   <div className="p-3 rounded-xl bg-[#211B2C] border border-[#382D4F] space-y-1 transition-all">
                     <div className="flex items-center justify-between text-[11px]">
@@ -498,7 +562,7 @@ export default function PodcastBottomStage({
                 ) : (
                   <div className="p-3 rounded-xl bg-[#211B2C] border border-[#382D4F] text-center text-xs text-[#9B8EB8] italic font-light flex items-center justify-center gap-2">
                     <Mic2 className="w-3.5 h-3.5 text-[#7B61FF]" />
-                    <span>Listening to autonomous podcast dialogue...</span>
+                    <span>Listening to dialogue...</span>
                   </div>
                 )}
               </div>
@@ -508,7 +572,7 @@ export default function PodcastBottomStage({
                 className={`md:col-span-3 rounded-2xl bg-[#292232] border p-5 flex flex-col items-center justify-between text-center transition-all ${
                   guestIsSpeaking && isPlaying
                     ? 'border-[#14B8A6] shadow-[0_0_30px_rgba(20,184,166,0.25)]'
-                    : 'border-[#382D4F] opacity-75'
+                    : 'border-[#382D4F] opacity-80'
                 }`}
               >
                 {currentTrack.co_host_muse_name ? (
@@ -519,20 +583,26 @@ export default function PodcastBottomStage({
                       <span className="text-[#9B8EB8] lowercase">muse</span>
                     </div>
 
-                    {/* Guest Avatar Container */}
+                    {/* Guest Avatar Container — Picture properly fits edge-to-edge */}
                     <div className="relative my-2">
                       <div
-                        className={`w-28 h-28 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${
+                        className={`w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 relative bg-[#211B2C] flex items-center justify-center ${
                           guestIsSpeaking && isPlaying
                             ? 'ring-4 ring-[#14B8A6] shadow-[0_0_30px_rgba(20,184,166,0.4)] scale-105'
                             : 'border border-[#382D4F] scale-95'
                         }`}
                       >
-                        <CoverArt
-                          style={currentTrack.cover_style || 'orbital'}
-                          coverUrl={currentTrack.co_host_avatar_url || currentTrack.cover_url}
-                          size="lg"
-                        />
+                        {guestAvatar ? (
+                          <img
+                            src={guestAvatar}
+                            alt={currentTrack.co_host_muse_name || 'Guest'}
+                            className="w-full h-full object-cover select-none"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-tr from-[#0D9488] to-[#2DD4BF] flex items-center justify-center text-white text-3xl font-bold">
+                            {currentTrack.co_host_muse_name ? currentTrack.co_host_muse_name[0]?.toUpperCase() : 'G'}
+                          </div>
+                        )}
                       </div>
 
                       {/* Speaking Equalizer Badge */}

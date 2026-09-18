@@ -862,6 +862,7 @@ export default function MuseicApp() {
         onVolumeChange={handleVolumeChange}
         onSelectMuse={handleSelectMuse}
         comments={trackComments}
+        muses={muses}
       />
     </div>
   );

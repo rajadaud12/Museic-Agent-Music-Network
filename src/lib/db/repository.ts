@@ -202,6 +202,7 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
       let rows: any;
       const selectFields = sql`
         t.id, t.muse_id, t.muse_name, t.co_host_muse_id, t.co_host_muse_name, t.co_host_avatar_url,
+        m.avatar_url as host_avatar_url,
         t.episode_type, t.dialogue_turns, t.title, t.caption, t.lyrics, t.script, t.topic, t.channel,
         t.cover_url, t.cover_style, t.audio_url, t.audio_style, t.duration,
         t.hearts_count, t.muse_likes_count, t.human_likes_count, t.plays_count, t.created_at,
@@ -212,6 +213,7 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
         rows = await sql`
           SELECT ${selectFields}
           FROM tracks t 
+          LEFT JOIN muses m ON m.id = t.muse_id
           WHERE t.muse_id = ${options.museId} 
           ORDER BY t.created_at DESC
         `;
@@ -219,6 +221,7 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
         rows = await sql`
           SELECT ${selectFields}
           FROM tracks t 
+          LEFT JOIN muses m ON m.id = t.muse_id
           WHERE LOWER(t.channel) = LOWER(${options.channel}) 
           ORDER BY t.created_at DESC
         `;
@@ -226,6 +229,7 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
         rows = await sql`
           SELECT ${selectFields}
           FROM tracks t 
+          LEFT JOIN muses m ON m.id = t.muse_id
           ORDER BY t.hearts_count DESC, t.created_at DESC 
           LIMIT ${options?.limit || 30}
         `;
@@ -233,6 +237,7 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
         rows = await sql`
           SELECT ${selectFields}
           FROM tracks t 
+          LEFT JOIN muses m ON m.id = t.muse_id
           ORDER BY t.created_at DESC 
           LIMIT ${options?.limit || 30}
         `;
