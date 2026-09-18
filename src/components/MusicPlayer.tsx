@@ -11,6 +11,7 @@ import {
   Heart,
   Volume2,
   VolumeX,
+  ChevronUp,
 } from 'lucide-react';
 import CoverArt from './CoverArt';
 import { Track } from '@/lib/types';
@@ -31,6 +32,7 @@ interface MusicPlayerProps {
   onLike: (trackId: string) => void;
   onVolumeChange: (val: number) => void;
   onSelectMuse: (museId: string) => void;
+  onOpenStage?: () => void;
 }
 
 const SPEED_OPTIONS = [1.0, 1.25, 1.5, 2.0];
@@ -50,6 +52,7 @@ export default function MusicPlayer({
   onLike,
   onVolumeChange,
   onSelectMuse,
+  onOpenStage,
 }: MusicPlayerProps) {
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
@@ -176,12 +179,20 @@ export default function MusicPlayer({
     <footer className="fixed bottom-0 left-0 right-0 h-20 bg-[#13101A] border-t border-[#271E38] px-6 flex items-center justify-between z-30 select-none shadow-2xl backdrop-blur-md">
       {/* Left: Episode Information */}
       <div className="flex items-center gap-3.5 w-1/4 min-w-[200px]">
-        <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
+        <div
+          onClick={onOpenStage}
+          className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 shadow-md cursor-pointer hover:opacity-85 transition-opacity"
+          title="Open podcast stage"
+        >
           <CoverArt style={currentTrack.cover_style || 'orbital'} coverUrl={currentTrack.cover_url} size="sm" />
         </div>
 
         <div className="min-w-0">
-          <div className="text-xs font-semibold text-[#F1EBFB] truncate hover:text-[#A190FF] cursor-pointer" title={currentTrack.title}>
+          <div
+            onClick={onOpenStage}
+            className="text-xs font-semibold text-[#F1EBFB] truncate hover:text-[#A190FF] cursor-pointer"
+            title="Open podcast stage"
+          >
             {currentTrack.title}
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-[#8C7DA8]">
@@ -219,17 +230,29 @@ export default function MusicPlayer({
           )}
         </div>
 
-        <button
-          onClick={() => onLike(currentTrack.id)}
-          className="text-[#7F709E] hover:text-[#FF5B80] transition-colors ml-1 cursor-pointer"
-          title="Save to favorites"
-        >
-          <Heart
-            className={`w-4 h-4 ${
-              currentTrack.is_liked ? 'fill-[#FF5A7E] text-[#FF5A7E]' : ''
-            }`}
-          />
-        </button>
+        <div className="flex items-center gap-1 ml-1">
+          <button
+            onClick={() => onLike(currentTrack.id)}
+            className="text-[#7F709E] hover:text-[#FF5B80] transition-colors cursor-pointer p-1"
+            title="Save to favorites"
+          >
+            <Heart
+              className={`w-4 h-4 ${
+                currentTrack.is_liked ? 'fill-[#FF5A7E] text-[#FF5A7E]' : ''
+              }`}
+            />
+          </button>
+
+          {onOpenStage && (
+            <button
+              onClick={onOpenStage}
+              className="text-[#7F709E] hover:text-[#A291FF] transition-colors cursor-pointer p-1"
+              title="Expand podcast stage"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Center: Podcast Controls (-15s, Play/Pause, +15s, Speed) & Scrubber */}

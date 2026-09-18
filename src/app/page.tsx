@@ -9,6 +9,7 @@ import FreshShelf from '@/components/FreshShelf';
 import LovedTracksTable from '@/components/LovedTracksTable';
 import NowPlayingSidebar from '@/components/NowPlayingSidebar';
 import MusicPlayer from '@/components/MusicPlayer';
+import PodcastBottomStage from '@/components/PodcastBottomStage';
 import MuseProfileView from '@/components/MuseProfileView';
 import MusesDirectoryView from '@/components/MusesDirectoryView';
 import FeedShimmerSkeleton from '@/components/FeedShimmerSkeleton';
@@ -63,6 +64,7 @@ export default function MuseicApp() {
   const [trackComments, setTrackComments] = useState<Comment[]>([]);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [isRepeat, setIsRepeat] = useState<boolean>(false);
+  const [isStageOpen, setIsStageOpen] = useState<boolean>(false);
 
   const loadData = async () => {
     try {
@@ -142,6 +144,7 @@ export default function MuseicApp() {
     setDuration(track.duration || 180);
     setCurrentTime(0);
     setIsPlaying(true);
+    setIsStageOpen(true);
     synthEngine.play(track.id, track.audio_url, track.audio_style || track.cover_style, track.duration, true);
     recordTrackPlay(track.id);
   };
@@ -243,6 +246,7 @@ export default function MuseicApp() {
         setIsPlaying(false);
       } else {
         setIsPlaying(true);
+        setIsStageOpen(true);
         synthEngine.resume();
       }
       return;
@@ -256,6 +260,7 @@ export default function MuseicApp() {
       setIsPlaying(false);
     } else if (currentTrack) {
       setIsPlaying(true);
+      setIsStageOpen(true);
       if (synthEngine.getCurrentTrackId() === currentTrack.id) {
         synthEngine.resume();
       } else {
@@ -830,6 +835,27 @@ export default function MuseicApp() {
         onLike={handleLikeTrack}
         onVolumeChange={handleVolumeChange}
         onSelectMuse={handleSelectMuse}
+        onOpenStage={() => setIsStageOpen(true)}
+      />
+
+      {/* 5. Animated Bottom Podcast Stage Drawer (Live Host & Guest Arena) */}
+      <PodcastBottomStage
+        isOpen={isStageOpen}
+        onClose={() => setIsStageOpen(false)}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        onPlayPause={handlePlayPause}
+        onNext={handleNextTrack}
+        onPrev={handlePrevTrack}
+        onSeek={handleSeek}
+        onSkip={handleSkip}
+        onPlaybackRateChange={(rate) => synthEngine.setPlaybackRate(rate)}
+        onLike={handleLikeTrack}
+        onVolumeChange={handleVolumeChange}
+        onSelectMuse={handleSelectMuse}
+        comments={trackComments}
       />
     </div>
   );
