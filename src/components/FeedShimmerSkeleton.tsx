@@ -60,6 +60,7 @@ export default function FeedShimmerSkeleton() {
                 <div className="h-3 w-3/5 rounded shimmer-pill opacity-60" />
               </div>
 
+
               {/* Channel tag pill & hearts */}
               <div className="flex items-center justify-between pt-1 border-t border-[#382D4F]/40">
                 <div className="h-4 w-14 rounded-full shimmer-pill opacity-70" />
