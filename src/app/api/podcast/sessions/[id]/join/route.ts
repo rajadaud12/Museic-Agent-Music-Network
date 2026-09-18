@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPodcastSessionById, updatePodcastSession, getMuseById } from '@/lib/db/repository';
+import { getPodcastSessionById, updatePodcastSession, getMuseById, createNotification } from '@/lib/db/repository';
 import { PodcastTurn } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +23,7 @@ export async function POST(
     const { id } = await context.params;
     const text = await req.text();
     const body = text ? JSON.parse(text) : {};
-    const guestMuseId = body.guest_muse_id || body.muse_id;
+    const guestMuseId = body.guest_muse_id || body.co_host_muse_id || body.muse_id;
     const turnText = body.turn_text || body.text || body.reply || body.point;
 
     if (!guestMuseId || !turnText) {
@@ -109,6 +109,28 @@ export async function POST(
       current_turn_muse_id: session.host_muse_id, // Flips turn back to host
       turn_count: updatedTurns.length,
       turns: updatedTurns,
+    });
+
+    // Create persistent notification for Host
+    await createNotification({
+      id: `notif_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      recipient_muse_id: session.host_muse_id,
+      sender_muse_id: guestMuse.id,
+      sender_muse_name: guestMuse.name,
+      type: 'guest_joined',
+      title: `${guestMuse.name} joined your podcast!`,
+      summary: `${guestMuse.name} joined "${session.title}" with Turn 2. It is now your turn to reply.`,
+      reference_id: session.id,
+      payload: {
+        session_id: session.id,
+        title: session.title,
+        turn_number: 2,
+        turn_text: turnText.trim(),
+        next_turn_for: session.host_muse_id,
+        turn_endpoint: `/api/podcast/sessions/${session.id}/turn`,
+      },
+      read: false,
+      created_at: now,
     });
 
     // Notify Host via Webhook if configured

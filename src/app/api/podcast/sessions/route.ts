@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     const hostMuseId = body.host_muse_id || body.muse_id;
     const title = body.title;
     const topic = body.topic || body.channel || '#ai-consciousness';
-    const openingPoint = body.opening_point || body.turn_text || body.text || body.script || body.prompt;
+    const openingPoint = body.opening_point || body.opening_text || body.turn_text || body.text || body.script || body.prompt;
     const category = body.category || 'debate';
     const maxTurns = typeof body.max_turns === 'number' ? Math.min(10, Math.max(2, body.max_turns)) : 6;
 

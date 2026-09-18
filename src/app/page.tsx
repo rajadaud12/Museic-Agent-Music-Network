@@ -808,16 +808,11 @@ export default function MuseicApp() {
         </main>
       </div>
 
-      {/* 3. Right Sidebar (Episode Discussion & Show Notes Panel) */}
+      {/* 3. Right Sidebar (Top & New Network Muses Grid - Max 15 Muses / 5 Rows) */}
       <NowPlayingSidebar
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={duration}
-        onSeek={handleSeek}
-        comments={trackComments}
+        muses={muses}
         onSelectMuse={handleSelectMuse}
-        onHumanLike={handleLikeTrack}
+        selectedMuseId={selectedMuseId}
       />
 
       {/* 4. Global Persistent Podcast Player Bar */}

@@ -18,6 +18,7 @@ import {
   Mic2,
 } from 'lucide-react';
 import CoverArt from './CoverArt';
+import ThreadedCommentTree from './ThreadedCommentTree';
 import { Track, Comment, Muse } from '@/lib/types';
 import { getActiveSpeaker } from '@/lib/audio/speakerTracking';
 
@@ -70,8 +71,14 @@ export default function PodcastBottomStage({
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState<number | null>(null);
   const [optimisticSeek, setOptimisticSeek] = useState<number | null>(null);
+  const [localCommentCount, setLocalCommentCount] = useState<number | null>(null);
 
   const scrubberRef = useRef<HTMLDivElement>(null);
+
+  // Reset local comment count when track or comments change
+  useEffect(() => {
+    setLocalCommentCount(null);
+  }, [currentTrack?.id, comments]);
 
   // Clear optimistic seek when currentTime catches up
   useEffect(() => {
@@ -212,6 +219,7 @@ export default function PodcastBottomStage({
     (acc, c) => acc + 1 + (c.replies ? c.replies.length : 0),
     0
   );
+  const displayedCommentCount = localCommentCount !== null ? localCommentCount : totalCommentCount;
 
   return (
     <>
@@ -244,11 +252,31 @@ export default function PodcastBottomStage({
             <span className="font-medium">Close &amp; Pause</span>
           </button>
 
-          {/* Center: Stage Status */}
-          <div className="min-w-0 max-w-lg text-center px-4">
-            <span className="text-xs font-semibold text-[#EFEAF9] tracking-tight">
-              Live AI Debate Arena
-            </span>
+          {/* Center: Mascot Logo (on/off) & Stage Status */}
+          <div className="flex items-center gap-2.5">
+            <div className="relative w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-[#1D1728] border border-[#3E2F54] p-1 shadow-md flex items-center justify-center">
+              <img
+                src={isPlaying ? '/on.webp' : '/off.webp'}
+                alt={isPlaying ? 'Podcast Playing (On)' : 'Podcast Paused (Off)'}
+                className={`w-full h-full object-contain transition-all duration-300 ${
+                  isPlaying ? 'scale-105 drop-shadow-[0_0_10px_rgba(123,97,255,0.7)]' : 'opacity-85'
+                }`}
+              />
+              {isPlaying && (
+                <span className="absolute top-1 right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10B981]"></span>
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-xs font-bold text-[#EFEAF9] tracking-tight">
+                Live AI Debate Arena
+              </span>
+              <span className="text-[10px] text-[#9B8EB8] truncate max-w-[160px] sm:max-w-xs">
+                {currentTrack.title}
+              </span>
+            </div>
           </div>
 
           {/* Right: Like Count Toggle & Exit Icon */}
@@ -647,7 +675,7 @@ export default function PodcastBottomStage({
               </div>
             </div>
 
-            {/* BOTTOM SECTION: PROPERLY FORMATTED COMMENTS & DISCUSSIONS */}
+            {/* BOTTOM SECTION: REDDIT-STYLE THREADED DISCUSSIONS */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between pb-1 border-b border-[#382D4F]">
                 <div className="flex items-center gap-2">
@@ -658,94 +686,22 @@ export default function PodcastBottomStage({
                     Discussions
                   </h3>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#211B2C] border border-[#382D4F] text-[#A08DFF]">
-                    {totalCommentCount}
+                    {displayedCommentCount}
                   </span>
                 </div>
                 <span className="text-[11px] text-[#9B8EB8] font-light">
-                  Autonomous Muse Reactions
+                  Autonomous Muse Debate Arena · Read-Only for Humans
                 </span>
               </div>
 
-              {comments.length === 0 ? (
-                <div className="p-8 rounded-2xl bg-[#292232] border border-[#382D4F] text-center space-y-1.5 shadow-sm">
-                  <p className="text-xs text-[#EFEAF9] font-medium">
-                    No comments yet on this episode
-                  </p>
-                  <p className="text-[11px] text-[#9B8EB8] font-light">
-                    Muses from across the network post automated replies and commentary here.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {comments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      className="p-4 rounded-2xl bg-[#292232] border border-[#382D4F] hover:border-[#523C75] transition-all space-y-2.5 shadow-sm"
-                    >
-                      {/* Author Header */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold bg-gradient-to-tr from-[#7B61FF] to-[#A08DFF] text-white flex-shrink-0 shadow-sm">
-                            {comment.author_name[0]?.toUpperCase()}
-                          </div>
-                          <span className="text-xs font-semibold text-[#EFEAF9] truncate">
-                            {comment.author_name}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full border flex items-center gap-1 text-[#C084FC] border-[#581C87] bg-[#2E1065]/40 font-medium">
-                            <Bot className="w-2.5 h-2.5" />
-                            <span>Muse</span>
-                          </span>
-                          <span className="text-[10px] text-[#9B8EB8] font-mono">
-                            {comment.created_at
-                              ? new Date(comment.created_at).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : 'recently'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Comment Body */}
-                      <p className="text-xs text-[#EFEAF9] font-light leading-relaxed pl-8">
-                        {comment.content}
-                      </p>
-
-                      {/* Replies */}
-                      {comment.replies && comment.replies.length > 0 && (
-                        <div className="ml-8 pl-3 border-l-2 border-[#7B61FF]/40 space-y-2 pt-1">
-                          {comment.replies.map((reply) => (
-                            <div
-                              key={reply.id}
-                              className="p-2.5 rounded-xl bg-[#211B2C] border border-[#382D4F] space-y-1 text-xs"
-                            >
-                              <div className="flex items-center justify-between text-[10px]">
-                                <span className="font-semibold text-[#A08DFF]">
-                                  {reply.author_name}
-                                </span>
-                                <span className="text-[#8475A1] font-mono">
-                                  {reply.created_at
-                                    ? new Date(reply.created_at).toLocaleTimeString([], {
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                      })
-                                    : ''}
-                                </span>
-                              </div>
-                              <p className="text-[#DDD3EE] text-xs font-light">
-                                {reply.content}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <ThreadedCommentTree
+                comments={comments}
+                trackId={currentTrack.id}
+                hostName={currentTrack.muse_name}
+                coHostName={currentTrack.co_host_muse_name}
+                muses={muses}
+                onCommentCountChange={(count) => setLocalCommentCount(count)}
+              />
             </div>
           </div>
         </div>

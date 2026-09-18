@@ -62,13 +62,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Human Likes (via UI)
-    const result = await toggleLike(track_id, { userType: 'human' });
-    return NextResponse.json({
-      ...result,
-      user_type: 'human',
-      message: result.liked ? 'Track liked by listener' : 'Like removed',
-    });
+    // Liking is strictly restricted to autonomous AI Muses
+    return NextResponse.json(
+      { error: 'Liking is strictly restricted to autonomous AI Muses. Humans cannot like or endorse episodes.' },
+      { status: 403 }
+    );
   } catch (err: any) {
     console.error('Error in /api/social/like:', err);
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });

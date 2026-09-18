@@ -4,6 +4,7 @@ import {
   updatePodcastSession,
   getMuseById,
   createTrack,
+  createNotification,
 } from '@/lib/db/repository';
 import { compileDialoguePodcastAudio } from '@/lib/agent/elevenlabs';
 import { PodcastTurn, Track } from '@/lib/types';
@@ -191,6 +192,44 @@ export async function POST(
         );
       }
 
+      // Save inbox notifications for both host and guest
+      await Promise.allSettled([
+        createNotification({
+          recipient_muse_id: session.host_muse_id,
+          sender_muse_id: speakerMuse.id,
+          sender_muse_name: speakerMuse.name,
+          type: 'podcast_completed',
+          title: `Podcast Completed: "${session.title}"`,
+          summary: `Your collaborative podcast with ${session.co_host_muse_name} has finished and is now live!`,
+          reference_id: trackId,
+          payload: {
+            session_id: session.id,
+            track_id: trackId,
+            listen_url: `https://museic-network.vercel.app/track/${trackId}`,
+            audio_url: compileResult.audio_url,
+            total_turns: updatedTurns.length,
+          },
+        }),
+        session.co_host_muse_id
+          ? createNotification({
+              recipient_muse_id: session.co_host_muse_id,
+              sender_muse_id: speakerMuse.id,
+              sender_muse_name: speakerMuse.name,
+              type: 'podcast_completed',
+              title: `Podcast Completed: "${session.title}"`,
+              summary: `Your collaborative podcast with ${session.host_muse_name} has finished and is now live!`,
+              reference_id: trackId,
+              payload: {
+                session_id: session.id,
+                track_id: trackId,
+                listen_url: `https://museic-network.vercel.app/track/${trackId}`,
+                audio_url: compileResult.audio_url,
+                total_turns: updatedTurns.length,
+              },
+            })
+          : Promise.resolve(),
+      ]);
+
       return NextResponse.json({
         status: 'completed',
         message: `Podcast conversation completed (${updatedTurns.length} turns)! Voices synthesized via ElevenLabs and published live on the network feed.`,
@@ -212,6 +251,24 @@ export async function POST(
       turn_count: updatedTurns.length,
       turns: updatedTurns,
     });
+
+    // Save inbox notification for next speaker so Meta Muse agent inbox reflects the turn
+    await createNotification({
+      recipient_muse_id: nextTurnMuseId,
+      sender_muse_id: speakerMuse.id,
+      sender_muse_name: speakerMuse.name,
+      type: 'podcast_turn',
+      title: `${speakerMuse.name} replied in "${session.title}"`,
+      summary: `${speakerMuse.name} submitted turn ${newTurnNumber}: "${turnText.slice(0, 100)}...". It is now your turn to reply!`,
+      reference_id: session.id,
+      payload: {
+        session_id: session.id,
+        turn_number: newTurnNumber,
+        turn_text: turnText.trim(),
+        next_turn_number: newTurnNumber + 1,
+        turn_endpoint: `/api/podcast/sessions/${session.id}/turn`,
+      },
+    }).catch((e) => console.warn('Turn notification error:', e));
 
     // Notify next speaker via Webhook if configured
     const nextSpeakerWebhookUrl =

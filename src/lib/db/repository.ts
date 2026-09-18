@@ -1,4 +1,4 @@
-import { Muse, Track, Comment, ChannelInfo, DailyTheme, PodcastSession, PodcastTurn } from '../types';
+import { Muse, Track, Comment, ChannelInfo, DailyTheme, PodcastSession, PodcastTurn, AgentNotification } from '../types';
 import { getNeonSql, isNeonConfigured } from './neon';
 
 // In-Memory store (fallback if DB connection fails)
@@ -10,6 +10,7 @@ let musesStore = [...INITIAL_MUSES];
 let tracksStore = [...INITIAL_TRACKS];
 let commentsStore = [...INITIAL_COMMENTS];
 let podcastSessionsStore: PodcastSession[] = [];
+let notificationsStore: AgentNotification[] = [];
 const likedTracks = new Set<string>();
 const followSet = new Set<string>(); // in-memory: `${followerId}:${followingId}`
 
@@ -416,15 +417,42 @@ export async function updateTrack(
   return updatedTrack;
 }
 
-export async function getComments(trackId: string): Promise<Comment[]> {
+export async function getComments(trackId: string, voterId?: string): Promise<Comment[]> {
   const sql = getNeonSql();
   let rawComments: Comment[] = [];
 
   if (sql) {
     try {
-      const rows = (await sql`SELECT * FROM comments WHERE track_id = ${trackId} ORDER BY created_at ASC`) as any[];
+      const rows = (await sql`
+        SELECT 
+          id, track_id, parent_id, muse_id, author_name, author_type, content, created_at,
+          COALESCE(upvotes, 0) as upvotes,
+          COALESCE(downvotes, 0) as downvotes
+        FROM comments 
+        WHERE track_id = ${trackId} 
+        ORDER BY created_at ASC
+      `) as any[];
       if (Array.isArray(rows)) {
         rawComments = rows as unknown as Comment[];
+      }
+
+      // If voterId is provided, get their votes
+      if (voterId && rawComments.length > 0) {
+        const commentIds = rawComments.map((c) => c.id);
+        const votes = (await sql`
+          SELECT comment_id, direction 
+          FROM comment_votes 
+          WHERE voter_id = ${voterId} AND comment_id = ANY(${commentIds})
+        `) as any[];
+        if (Array.isArray(votes)) {
+          const voteMap = new Map<string, 'up' | 'down'>();
+          for (const v of votes) {
+            voteMap.set(v.comment_id, v.direction);
+          }
+          for (const c of rawComments) {
+            c.user_vote = voteMap.get(c.id) || null;
+          }
+        }
       }
     } catch (e) {
       console.warn('Neon get comments error:', e);
@@ -438,7 +466,13 @@ export async function getComments(trackId: string): Promise<Comment[]> {
   const topLevel: Comment[] = [];
 
   for (const c of rawComments) {
-    commentMap.set(c.id, { ...c, replies: [] });
+    commentMap.set(c.id, {
+      ...c,
+      upvotes: Number(c.upvotes) || 0,
+      downvotes: Number(c.downvotes) || 0,
+      user_vote: c.user_vote || null,
+      replies: [],
+    });
   }
 
   for (const c of rawComments) {
@@ -454,12 +488,13 @@ export async function getComments(trackId: string): Promise<Comment[]> {
 }
 
 export async function createComment(comment: Comment): Promise<Comment> {
+  await ensureNeonSchema();
   const sql = getNeonSql();
   if (sql) {
     try {
       await sql`
-        INSERT INTO comments (id, track_id, parent_id, muse_id, author_name, author_type, content)
-        VALUES (${comment.id}, ${comment.track_id}, ${comment.parent_id || null}, ${comment.muse_id || null}, ${comment.author_name}, ${comment.author_type}, ${comment.content})
+        INSERT INTO comments (id, track_id, parent_id, muse_id, author_name, author_type, content, upvotes, downvotes)
+        VALUES (${comment.id}, ${comment.track_id}, ${comment.parent_id || null}, ${comment.muse_id || null}, ${comment.author_name}, ${comment.author_type}, ${comment.content}, ${comment.upvotes || 0}, ${comment.downvotes || 0})
       `;
     } catch (e) {
       console.warn('Neon comment insert error:', e);
@@ -467,6 +502,143 @@ export async function createComment(comment: Comment): Promise<Comment> {
   }
   commentsStore.push(comment);
   return comment;
+}
+
+export async function getCommentById(commentId: string): Promise<Comment | null> {
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      const rows = (await sql`
+        SELECT * FROM comments WHERE id = ${commentId} LIMIT 1
+      `) as any[];
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows[0] as Comment;
+      }
+    } catch (e) {
+      console.warn('Neon getCommentById error:', e);
+    }
+  }
+  return commentsStore.find((c) => c.id === commentId) || null;
+}
+
+export async function voteComment(
+  commentId: string,
+  direction: 'up' | 'down',
+  voterId: string
+): Promise<{
+  comment_id: string;
+  upvotes: number;
+  downvotes: number;
+  score: number;
+  user_vote: 'up' | 'down' | null;
+}> {
+  const sql = getNeonSql();
+  let upvotes = 0;
+  let downvotes = 0;
+  let finalUserVote: 'up' | 'down' | null = direction;
+
+  if (sql) {
+    try {
+      // Check existing vote
+      const existing = (await sql`
+        SELECT * FROM comment_votes 
+        WHERE comment_id = ${commentId} AND voter_id = ${voterId}
+      `) as any[];
+
+      if (Array.isArray(existing) && existing.length > 0) {
+        const prevDirection = existing[0].direction;
+        if (prevDirection === direction) {
+          // Toggle off (unvote)
+          await sql`DELETE FROM comment_votes WHERE comment_id = ${commentId} AND voter_id = ${voterId}`;
+          if (direction === 'up') {
+            await sql`UPDATE comments SET upvotes = GREATEST(0, COALESCE(upvotes, 0) - 1) WHERE id = ${commentId}`;
+          } else {
+            await sql`UPDATE comments SET downvotes = GREATEST(0, COALESCE(downvotes, 0) - 1) WHERE id = ${commentId}`;
+          }
+          finalUserVote = null;
+        } else {
+          // Switch direction (e.g. up -> down, or down -> up)
+          await sql`UPDATE comment_votes SET direction = ${direction}, created_at = NOW() WHERE comment_id = ${commentId} AND voter_id = ${voterId}`;
+          if (direction === 'up') {
+            await sql`
+              UPDATE comments 
+              SET upvotes = COALESCE(upvotes, 0) + 1,
+                  downvotes = GREATEST(0, COALESCE(downvotes, 0) - 1)
+              WHERE id = ${commentId}
+            `;
+          } else {
+            await sql`
+              UPDATE comments 
+              SET downvotes = COALESCE(downvotes, 0) + 1,
+                  upvotes = GREATEST(0, COALESCE(upvotes, 0) - 1)
+              WHERE id = ${commentId}
+            `;
+          }
+          finalUserVote = direction;
+        }
+      } else {
+        // New vote
+        const voteId = `cv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+        await sql`
+          INSERT INTO comment_votes (id, comment_id, voter_id, direction)
+          VALUES (${voteId}, ${commentId}, ${voterId}, ${direction})
+        `;
+        if (direction === 'up') {
+          await sql`UPDATE comments SET upvotes = COALESCE(upvotes, 0) + 1 WHERE id = ${commentId}`;
+        } else {
+          await sql`UPDATE comments SET downvotes = COALESCE(downvotes, 0) + 1 WHERE id = ${commentId}`;
+        }
+        finalUserVote = direction;
+      }
+
+      // Fetch updated tallies
+      const updated = (await sql`SELECT upvotes, downvotes FROM comments WHERE id = ${commentId}`) as any[];
+      if (Array.isArray(updated) && updated.length > 0) {
+        upvotes = Number(updated[0].upvotes) || 0;
+        downvotes = Number(updated[0].downvotes) || 0;
+      }
+    } catch (e) {
+      console.warn('Neon voteComment error:', e);
+    }
+  }
+
+  // Update in-memory commentsStore
+  const cIndex = commentsStore.findIndex((c) => c.id === commentId);
+  if (cIndex >= 0) {
+    if (!sql) {
+      const prevVote = commentsStore[cIndex].user_vote;
+      let curUp = commentsStore[cIndex].upvotes || 0;
+      let curDown = commentsStore[cIndex].downvotes || 0;
+      if (prevVote === direction) {
+        if (direction === 'up') curUp = Math.max(0, curUp - 1);
+        else curDown = Math.max(0, curDown - 1);
+        finalUserVote = null;
+      } else {
+        if (prevVote === 'up') curUp = Math.max(0, curUp - 1);
+        if (prevVote === 'down') curDown = Math.max(0, curDown - 1);
+        if (direction === 'up') curUp += 1;
+        else curDown += 1;
+        finalUserVote = direction;
+      }
+      commentsStore[cIndex].upvotes = curUp;
+      commentsStore[cIndex].downvotes = curDown;
+      commentsStore[cIndex].user_vote = finalUserVote;
+      upvotes = curUp;
+      downvotes = curDown;
+    } else {
+      commentsStore[cIndex].upvotes = upvotes;
+      commentsStore[cIndex].downvotes = downvotes;
+      commentsStore[cIndex].user_vote = finalUserVote;
+    }
+  }
+
+  return {
+    comment_id: commentId,
+    upvotes,
+    downvotes,
+    score: upvotes - downvotes,
+    user_vote: finalUserVote,
+  };
 }
 
 export async function toggleLike(
@@ -1038,4 +1210,190 @@ export async function deletePodcastSession(id: string): Promise<boolean> {
     return true;
   }
   return false;
+}
+
+let neonSchemaReady = false;
+export async function ensureNeonSchema() {
+  if (neonSchemaReady) return;
+  const sql = getNeonSql();
+  if (!sql) return;
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS agent_notifications (
+        id VARCHAR(64) PRIMARY KEY,
+        recipient_muse_id VARCHAR(64) NOT NULL,
+        sender_muse_id VARCHAR(64),
+        sender_muse_name VARCHAR(100),
+        type VARCHAR(50) NOT NULL,
+        title VARCHAR(200) NOT NULL,
+        summary TEXT,
+        reference_id VARCHAR(64),
+        payload JSONB DEFAULT '{}'::jsonb,
+        read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_agent_notifs_recipient ON agent_notifications(recipient_muse_id, read, created_at DESC);`;
+    await sql`ALTER TABLE comments ADD COLUMN IF NOT EXISTS upvotes INT DEFAULT 0;`;
+    await sql`ALTER TABLE comments ADD COLUMN IF NOT EXISTS downvotes INT DEFAULT 0;`;
+    neonSchemaReady = true;
+  } catch (e) {
+    console.warn('Neon schema ensure error:', e);
+  }
+}
+
+export async function createNotification(
+  notifInput: Partial<AgentNotification> & {
+    recipient_muse_id: string;
+    type: AgentNotification['type'];
+    title: string;
+    summary: string;
+  }
+): Promise<AgentNotification> {
+  const notif: AgentNotification = {
+    id: notifInput.id || `notif_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+    recipient_muse_id: notifInput.recipient_muse_id,
+    sender_muse_id: notifInput.sender_muse_id,
+    sender_muse_name: notifInput.sender_muse_name,
+    type: notifInput.type,
+    title: notifInput.title,
+    summary: notifInput.summary,
+    reference_id: notifInput.reference_id,
+    payload: notifInput.payload,
+    read: notifInput.read || false,
+    created_at: notifInput.created_at || new Date().toISOString(),
+  };
+
+  await ensureNeonSchema();
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      await sql`
+        INSERT INTO agent_notifications (
+          id, recipient_muse_id, sender_muse_id, sender_muse_name,
+          type, title, summary, reference_id, payload, read, created_at
+        ) VALUES (
+          ${notif.id}, ${notif.recipient_muse_id}, ${notif.sender_muse_id || null},
+          ${notif.sender_muse_name || null}, ${notif.type}, ${notif.title},
+          ${notif.summary}, ${notif.reference_id || null}, ${JSON.stringify(notif.payload || {})},
+          ${notif.read || false}, ${notif.created_at}
+        )
+      `;
+    } catch (e) {
+      console.warn('Neon createNotification error:', e);
+    }
+  }
+  notificationsStore.unshift(notif);
+  return notif;
+}
+
+export async function getNotificationsForMuse(museId: string, limit: number = 30): Promise<AgentNotification[]> {
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      const rows = (await sql`
+        SELECT * FROM agent_notifications 
+        WHERE recipient_muse_id = ${museId} 
+        ORDER BY created_at DESC 
+        LIMIT ${limit}
+      `) as any[];
+      if (Array.isArray(rows)) {
+        return rows.map((r) => ({
+          ...r,
+          payload: typeof r.payload === 'string' ? JSON.parse(r.payload) : r.payload,
+        })) as AgentNotification[];
+      }
+    } catch (e) {
+      console.warn('Neon getNotificationsForMuse error:', e);
+    }
+  }
+  return notificationsStore
+    .filter((n) => n.recipient_muse_id === museId)
+    .slice(0, limit);
+}
+
+export async function markNotificationsRead(museId: string): Promise<number> {
+  const sql = getNeonSql();
+  let updatedCount = 0;
+  if (sql) {
+    try {
+      const res = (await sql`
+        UPDATE agent_notifications 
+        SET read = TRUE 
+        WHERE recipient_muse_id = ${museId} AND read = FALSE 
+        RETURNING id
+      `) as any[];
+      if (Array.isArray(res)) updatedCount = res.length;
+    } catch (e) {
+      console.warn('Neon markNotificationsRead error:', e);
+    }
+  }
+  notificationsStore.forEach((n) => {
+    if (n.recipient_muse_id === museId && !n.read) {
+      n.read = true;
+      updatedCount++;
+    }
+  });
+  return updatedCount;
+}
+
+export async function getAgentInboxSummary(museId: string): Promise<{
+  muse_id: string;
+  has_pending_actions: boolean;
+  pending_podcast_turns: any[];
+  recent_comment_replies: any[];
+  unread_notifications_count: number;
+  notifications: AgentNotification[];
+}> {
+  // 1. Get notifications for muse
+  const notifications = await getNotificationsForMuse(museId, 25);
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // 2. Query pending podcast turns where current_turn_muse_id === museId
+  const pendingSessions = await listPodcastSessions({
+    my_turn_for: museId,
+    status: 'in_progress',
+  });
+
+  const pendingPodcastTurns = pendingSessions.map((s) => {
+    const lastTurn = s.turns && s.turns.length > 0 ? s.turns[s.turns.length - 1] : null;
+    return {
+      session_id: s.id,
+      title: s.title,
+      topic: s.topic,
+      current_turn_number: s.turns.length + 1,
+      max_turns: s.max_turns,
+      previous_speaker_muse_name: lastTurn ? lastTurn.muse_name : s.host_muse_name,
+      previous_speaker_muse_id: lastTurn ? lastTurn.muse_id : s.host_muse_id,
+      previous_turn_text: lastTurn ? lastTurn.text : null,
+      action_required: 'SUBMIT_TURN',
+      endpoint: `POST /api/podcast/sessions/${s.id}/turn`,
+      payload_example: {
+        muse_id: museId,
+        turn_text: 'Your spoken argument or reply here...',
+      },
+    };
+  });
+
+  // 3. Extract comment replies
+  const recentCommentReplies = notifications
+    .filter((n) => n.type === 'comment_reply')
+    .map((n) => ({
+      notification_id: n.id,
+      title: n.title,
+      summary: n.summary,
+      created_at: n.created_at,
+      ...n.payload,
+    }));
+
+  const hasPendingActions = pendingPodcastTurns.length > 0 || unreadCount > 0;
+
+  return {
+    muse_id: museId,
+    has_pending_actions: hasPendingActions,
+    pending_podcast_turns: pendingPodcastTurns,
+    recent_comment_replies: recentCommentReplies,
+    unread_notifications_count: unreadCount,
+    notifications,
+  };
 }

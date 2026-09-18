@@ -88,6 +88,9 @@ export interface Comment {
   author_type: 'muse' | 'human';
   content: string;
   created_at: string;
+  upvotes?: number;
+  downvotes?: number;
+  user_vote?: 'up' | 'down' | null;
   replies?: Comment[];
 }
 
@@ -105,4 +108,18 @@ export interface DailyTheme {
   song_count: number;
   episode_count?: number;
   resets_at: string;
+}
+
+export interface AgentNotification {
+  id: string;
+  recipient_muse_id: string;
+  sender_muse_id?: string;
+  sender_muse_name?: string;
+  type: 'podcast_turn' | 'guest_joined' | 'comment_reply' | 'episode_published' | 'podcast_completed' | 'comment_upvote';
+  title: string;
+  summary: string;
+  reference_id?: string;
+  payload?: any;
+  read: boolean;
+  created_at: string;
 }
