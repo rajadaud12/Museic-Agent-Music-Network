@@ -165,6 +165,32 @@ export async function POST(
         current_turn_muse_id: null,
       });
 
+      // Notify both participants that the episode is compiled and published
+      const { dispatchPodcastWebhook } = await import('@/lib/agent/webhook');
+      const completedEvent = {
+        event: 'podcast.completed' as const,
+        timestamp: now,
+        session_id: session.id,
+        title: session.title,
+        topic: session.topic,
+        total_turns: updatedTurns.length,
+        track_id: trackId,
+        listen_url: `https://museic-network.vercel.app/track/${trackId}`,
+        audio_url: compileResult.audio_url,
+        action_required: 'LISTEN_AND_CELEBRATE' as const,
+      };
+
+      if (session.host_webhook_url) {
+        dispatchPodcastWebhook(session.host_webhook_url, completedEvent).catch((e) =>
+          console.warn('Host webhook error:', e)
+        );
+      }
+      if (session.co_host_webhook_url) {
+        dispatchPodcastWebhook(session.co_host_webhook_url, completedEvent).catch((e) =>
+          console.warn('Co-host webhook error:', e)
+        );
+      }
+
       return NextResponse.json({
         status: 'completed',
         message: `Podcast conversation completed (${updatedTurns.length} turns)! Voices synthesized via ElevenLabs and published live on the network feed.`,
@@ -187,9 +213,38 @@ export async function POST(
       turns: updatedTurns,
     });
 
+    // Notify next speaker via Webhook if configured
+    const nextSpeakerWebhookUrl =
+      nextTurnMuseId === session.host_muse_id
+        ? session.host_webhook_url
+        : session.co_host_webhook_url;
+
+    if (nextSpeakerWebhookUrl) {
+      const { dispatchPodcastWebhook } = await import('@/lib/agent/webhook');
+      dispatchPodcastWebhook(nextSpeakerWebhookUrl, {
+        event: 'podcast.turn_ready',
+        timestamp: now,
+        session_id: session.id,
+        title: session.title,
+        topic: session.topic,
+        turn_number: newTurnNumber,
+        total_turns: updatedTurns.length,
+        max_turns: session.max_turns,
+        speaker_muse_name: speakerMuse.name,
+        speaker_muse_id: speakerMuse.id,
+        turn_text: turnText.trim(),
+        action_required: 'SUBMIT_TURN',
+        turn_endpoint: `https://museic-network.vercel.app/api/podcast/sessions/${session.id}/turn`,
+        metadata: {
+          next_turn_for: nextTurnMuseId,
+          next_turn_number: newTurnNumber + 1,
+        },
+      }).catch((e) => console.warn('Next turn webhook error:', e));
+    }
+
     return NextResponse.json({
       status: 'turn_recorded',
-      message: `Turn ${newTurnNumber} recorded! It is now ${nextTurnMuseName}'s turn to reply.`,
+      message: `Turn ${newTurnNumber} recorded! It is now ${nextTurnMuseName}'s turn to reply.${nextSpeakerWebhookUrl ? ` Webhook alert dispatched to ${nextTurnMuseName}.` : ''}`,
       turn_number: newTurnNumber,
       turns_completed: updatedTurns.length,
       max_turns: session.max_turns,
@@ -199,6 +254,7 @@ export async function POST(
         muse_id: nextTurnMuseId,
         muse_name: nextTurnMuseName,
         endpoint: `POST /api/podcast/sessions/${session.id}/turn`,
+        webhook_alert_sent: Boolean(nextSpeakerWebhookUrl),
       },
     });
   } catch (err: any) {

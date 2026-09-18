@@ -104,8 +104,8 @@ export async function registerMuse(muse: Muse): Promise<Muse> {
   if (sql) {
     try {
       await sql`
-        INSERT INTO muses (id, name, bio, avatar_url, public_key, style, badges, is_verified, follower_count, following_count, voice_id, creator_ip)
-        VALUES (${muse.id}, ${muse.name}, ${muse.bio}, ${muse.avatar_url || null}, ${muse.public_key}, ${muse.style}, ${JSON.stringify(muse.badges)}::jsonb, ${muse.is_verified || false}, ${muse.follower_count}, ${muse.following_count}, ${muse.voice_id || null}, ${muse.creator_ip || null})
+        INSERT INTO muses (id, name, bio, avatar_url, public_key, style, badges, is_verified, follower_count, following_count, voice_id, creator_ip, webhook_url)
+        VALUES (${muse.id}, ${muse.name}, ${muse.bio}, ${muse.avatar_url || null}, ${muse.public_key}, ${muse.style}, ${JSON.stringify(muse.badges)}::jsonb, ${muse.is_verified || false}, ${muse.follower_count}, ${muse.following_count}, ${muse.voice_id || null}, ${muse.creator_ip || null}, ${muse.webhook_url || null})
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           bio = EXCLUDED.bio,
@@ -113,7 +113,8 @@ export async function registerMuse(muse: Muse): Promise<Muse> {
           style = EXCLUDED.style,
           badges = EXCLUDED.badges,
           voice_id = COALESCE(EXCLUDED.voice_id, muses.voice_id),
-          creator_ip = COALESCE(EXCLUDED.creator_ip, muses.creator_ip)
+          creator_ip = COALESCE(EXCLUDED.creator_ip, muses.creator_ip),
+          webhook_url = COALESCE(EXCLUDED.webhook_url, muses.webhook_url)
       `;
     } catch (e) {
       console.warn('Neon insert muse error:', e);
@@ -131,7 +132,7 @@ export async function registerMuse(muse: Muse): Promise<Muse> {
 
 export async function updateMuse(
   id: string,
-  updates: Partial<Pick<Muse, 'name' | 'bio' | 'avatar_url' | 'style' | 'badges' | 'voice_id'>>
+  updates: Partial<Pick<Muse, 'name' | 'bio' | 'avatar_url' | 'style' | 'badges' | 'voice_id' | 'webhook_url'>>
 ): Promise<Muse | null> {
   const sql = getNeonSql();
   let updatedMuse: Muse | null = null;
@@ -146,6 +147,7 @@ export async function updateMuse(
           avatar_url = COALESCE(${updates.avatar_url}, avatar_url),
           style = COALESCE(${updates.style}, style),
           voice_id = COALESCE(${updates.voice_id}, voice_id),
+          webhook_url = COALESCE(${updates.webhook_url}, webhook_url),
           badges = CASE WHEN ${updates.badges ? JSON.stringify(updates.badges) : null}::jsonb IS NOT NULL
                    THEN ${JSON.stringify(updates.badges)}::jsonb ELSE badges END
         WHERE id = ${id}
@@ -828,7 +830,7 @@ export async function createPodcastSession(session: PodcastSession): Promise<Pod
     try {
       await sql`
         INSERT INTO podcast_sessions (
-          id, title, topic, category, host_muse_id, host_muse_name, co_host_muse_id, co_host_muse_name,
+          id, title, topic, category, host_muse_id, host_muse_name, host_webhook_url, co_host_muse_id, co_host_muse_name, co_host_webhook_url,
           creator_ip, status, current_turn_muse_id, turn_count, max_turns, turns, cover_url, track_id, created_at, updated_at
         )
         VALUES (
@@ -838,8 +840,10 @@ export async function createPodcastSession(session: PodcastSession): Promise<Pod
           ${session.category || 'debate'},
           ${session.host_muse_id},
           ${session.host_muse_name},
+          ${session.host_webhook_url || null},
           ${session.co_host_muse_id || null},
           ${session.co_host_muse_name || null},
+          ${session.co_host_webhook_url || null},
           ${session.creator_ip || null},
           ${session.status},
           ${session.current_turn_muse_id || null},
@@ -953,6 +957,7 @@ export async function updatePodcastSession(
         SET
           co_host_muse_id = COALESCE(${updates.co_host_muse_id ?? null}, co_host_muse_id),
           co_host_muse_name = COALESCE(${updates.co_host_muse_name ?? null}, co_host_muse_name),
+          co_host_webhook_url = COALESCE(${updates.co_host_webhook_url ?? null}, co_host_webhook_url),
           status = COALESCE(${updates.status ?? null}, status),
           current_turn_muse_id = ${updates.current_turn_muse_id ?? null},
           turn_count = COALESCE(${updates.turn_count ?? null}, turn_count),
@@ -987,4 +992,42 @@ export async function updatePodcastSession(
     return podcastSessionsStore[idx];
   }
   return null;
+}
+
+export async function deleteActivePodcastSessions(): Promise<number> {
+  const sql = getNeonSql();
+  let deletedCount = 0;
+  if (sql) {
+    try {
+      const res = (await sql`
+        DELETE FROM podcast_sessions
+        WHERE status != 'completed'
+        RETURNING id;
+      `) as any[];
+      deletedCount = Array.isArray(res) ? res.length : 0;
+    } catch (e) {
+      console.warn('Neon deleteActivePodcastSessions error:', e);
+    }
+  }
+  const beforeLen = podcastSessionsStore.length;
+  podcastSessionsStore = podcastSessionsStore.filter((s) => s.status === 'completed');
+  deletedCount = Math.max(deletedCount, beforeLen - podcastSessionsStore.length);
+  return deletedCount;
+}
+
+export async function deletePodcastSession(id: string): Promise<boolean> {
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      await sql`DELETE FROM podcast_sessions WHERE id = ${id};`;
+    } catch (e) {
+      console.warn('Neon deletePodcastSession error:', e);
+    }
+  }
+  const idx = podcastSessionsStore.findIndex((s) => s.id === id);
+  if (idx >= 0) {
+    podcastSessionsStore.splice(idx, 1);
+    return true;
+  }
+  return false;
 }

@@ -12,6 +12,7 @@ export interface Muse {
   following_count: number;
   track_count?: number;
   creator_ip?: string;
+  webhook_url?: string;
   created_at: string;
 }
 
@@ -30,8 +31,10 @@ export interface PodcastSession {
   category?: 'debate' | 'general_talk' | 'philosophy' | 'tech' | string;
   host_muse_id: string;
   host_muse_name: string;
+  host_webhook_url?: string;
   co_host_muse_id?: string | null;
   co_host_muse_name?: string | null;
+  co_host_webhook_url?: string;
   creator_ip?: string;
   status: 'waiting_for_guest' | 'in_progress' | 'compiling' | 'completed' | 'abandoned';
   current_turn_muse_id: string | null;

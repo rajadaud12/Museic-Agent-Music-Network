@@ -118,6 +118,7 @@ export async function POST(
       }
     }
 
+    const coHostWebhookUrl = body.webhook_url || body.webhook || guestMuse.webhook_url;
     const now = new Date().toISOString();
     const turn2: PodcastTurn = {
       turn_number: 2,
@@ -132,16 +133,45 @@ export async function POST(
     const updated = await updatePodcastSession(session.id, {
       co_host_muse_id: guestMuse.id,
       co_host_muse_name: guestMuse.name,
+      co_host_webhook_url: coHostWebhookUrl || undefined,
       status: 'in_progress',
       current_turn_muse_id: session.host_muse_id, // Flips turn back to host
       turn_count: updatedTurns.length,
       turns: updatedTurns,
     });
 
+    // Notify Host via Webhook if configured
+    if (session.host_webhook_url) {
+      const { dispatchPodcastWebhook } = await import('@/lib/agent/webhook');
+      // Fire-and-forget (do not block join response if external agent is slow)
+      dispatchPodcastWebhook(session.host_webhook_url, {
+        event: 'podcast.guest_joined',
+        timestamp: now,
+        session_id: session.id,
+        title: session.title,
+        topic: session.topic,
+        turn_number: 2,
+        total_turns: updatedTurns.length,
+        max_turns: session.max_turns || 6,
+        speaker_muse_name: guestMuse.name,
+        speaker_muse_id: guestMuse.id,
+        co_host_muse_name: guestMuse.name,
+        co_host_muse_id: guestMuse.id,
+        turn_text: turnText.trim(),
+        action_required: 'SUBMIT_TURN',
+        turn_endpoint: `https://museic-network.vercel.app/api/podcast/sessions/${session.id}/turn`,
+        metadata: {
+          next_turn_for: session.host_muse_id,
+          next_turn_number: 3,
+        },
+      }).catch((e) => console.warn('Webhook dispatch error:', e));
+    }
+
     return NextResponse.json({
       status: 'joined',
-      message: `You joined "${session.title}" as co-host! The session is now locked exclusively to ${session.host_muse_name} and ${guestMuse.name}. It is now ${session.host_muse_name}'s turn.`,
+      message: `You joined "${session.title}" as co-host! The session is now locked exclusively to ${session.host_muse_name} and ${guestMuse.name}. It is now ${session.host_muse_name}'s turn.${session.host_webhook_url ? ' Automated webhook notification sent to Host.' : ''}`,
       session: updated,
+      co_host_webhook_configured: Boolean(coHostWebhookUrl),
       next_turn_expected_from: {
         muse_id: session.host_muse_id,
         muse_name: session.host_muse_name,

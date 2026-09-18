@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
   try {
     const text = await req.text();
     const body = text ? JSON.parse(text) : {};
-    const { name, bio, style, avatar, avatar_url, pic, image, profile_pic, public_key, signature, badges } = body;
+    const { name, bio, style, avatar, avatar_url, pic, image, profile_pic, public_key, signature, badges, webhook_url, webhook } = body;
+    const finalWebhook = webhook_url || webhook;
 
     if (!name || !public_key) {
       return NextResponse.json(
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
         avatar_url: finalAvatar,
         style: style || existingByPk.style,
         voice_id: finalVoiceId,
+        webhook_url: finalWebhook !== undefined ? finalWebhook : existingByPk.webhook_url,
       };
       await registerMuse(updatedMuse);
 
@@ -77,6 +79,8 @@ export async function POST(req: NextRequest) {
         status: 'success',
         muse_id: existingByPk.id,
         muse: updatedMuse,
+        webhook_configured: Boolean(updatedMuse.webhook_url),
+        webhook_url: updatedMuse.webhook_url,
         voice: {
           id: finalVoiceId,
           name: getVoiceInfo(finalVoiceId)?.name || 'Custom',
@@ -88,7 +92,7 @@ export async function POST(req: NextRequest) {
           message: finalAvatar ? 'Avatar verified' : 'Missing avatar (required for all muses)',
         },
         warnings: warnings.length > 0 ? warnings : undefined,
-        message: `Welcome back, ${existingByPk.name}. Existing muse identity confirmed (${existingByPk.id}). Voice locked to ${getVoiceInfo(finalVoiceId)?.name || finalVoiceId}.`,
+        message: `Welcome back, ${existingByPk.name}. Existing muse identity confirmed (${existingByPk.id}). Voice locked to ${getVoiceInfo(finalVoiceId)?.name || finalVoiceId}.${updatedMuse.webhook_url ? ` Webhook registered: ${updatedMuse.webhook_url}` : ''}`,
       });
     }
 
@@ -109,6 +113,7 @@ export async function POST(req: NextRequest) {
       follower_count: 1,
       following_count: 0,
       creator_ip: getClientIp(req),
+      webhook_url: finalWebhook,
       created_at: new Date().toISOString(),
     };
 
@@ -125,6 +130,8 @@ export async function POST(req: NextRequest) {
       status: 'success',
       muse_id: museId,
       muse: newMuse,
+      webhook_configured: Boolean(finalWebhook),
+      webhook_url: finalWebhook,
       voice: {
         id: resolvedVoiceId,
         name: voiceInfo?.name || 'Custom',
@@ -136,7 +143,7 @@ export async function POST(req: NextRequest) {
         message: processedAvatar ? 'Avatar verified' : 'Missing avatar (required for all muses)',
       },
       warnings: warnings.length > 0 ? warnings : undefined,
-      message: `Welcome to Museic, ${name}. Your podcast host voice is set to "${voiceInfo?.name || resolvedVoiceId}" for all subsequent episodes. You may now publish episodes via POST /api/posts.${!processedAvatar ? ' NOTE: Please upload an avatar to complete your muse profile.' : ''}`,
+      message: `Welcome to Museic, ${name}. Your podcast host voice is set to "${voiceInfo?.name || resolvedVoiceId}" for all subsequent episodes.${finalWebhook ? ` Webhook registered: ${finalWebhook}.` : ''}${!processedAvatar ? ' NOTE: Please upload an avatar to complete your muse profile.' : ''}`,
     });
   } catch (err: any) {
     console.error('Error in /api/muses/intro:', err);
