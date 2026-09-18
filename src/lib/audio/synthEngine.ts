@@ -459,6 +459,9 @@ class SynthAudioEngine {
 
   public getDuration(): number {
     if (this.htmlAudio && this.htmlAudio.duration && isFinite(this.htmlAudio.duration) && this.htmlAudio.duration > 0) {
+      if (this.currentDuration > 10 && this.htmlAudio.duration < this.currentDuration * 0.7) {
+        return this.currentDuration;
+      }
       return this.htmlAudio.duration;
     }
     return this.currentDuration || 180;

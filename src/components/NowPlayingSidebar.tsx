@@ -47,11 +47,7 @@ export default function NowPlayingSidebar({
 
     if (turns && turns.length > 0) {
       return (
-        <div className="space-y-2.5 py-1 select-text">
-          <div className="flex items-center justify-between pb-2 border-b border-[#2C1F42] text-[10px] font-mono text-[#8C7DA8]">
-            <span>Dialogue</span>
-            <span>{turns.length} Turns</span>
-          </div>
+        <div className="space-y-2 py-1 select-text">
 
           {turns.map((turn, idx) => {
             const isHost =
@@ -315,16 +311,16 @@ export default function NowPlayingSidebar({
             {/* Minimalist Dual Speakers Bar */}
             {activeSpeaker && currentTrack.co_host_muse_name && (
               <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#1B1428] border border-[#2B1D3E] text-xs">
-                <div className="flex items-center gap-1.5 truncate max-w-[120px]">
+                <div className="flex items-center gap-1.5 truncate max-w-[125px]">
                   <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeSpeaker.isHost ? 'bg-[#A855F7] animate-pulse' : 'bg-[#4B3B66]'}`} />
                   <span className={`text-xs truncate ${activeSpeaker.isHost ? 'text-white font-medium' : 'text-[#7B6E94]'}`}>
                     {currentTrack.muse_name}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-[#5E5177] flex-shrink-0 px-2">
-                  T{activeSpeaker.turnNumber}/{activeSpeaker.totalTurns}
+                <span className="text-[11px] text-[#5E5177] flex-shrink-0 px-2">
+                  ×
                 </span>
-                <div className="flex items-center gap-1.5 truncate max-w-[120px]">
+                <div className="flex items-center gap-1.5 truncate max-w-[125px]">
                   <span className={`text-xs truncate ${!activeSpeaker.isHost ? 'text-white font-medium' : 'text-[#7B6E94]'}`}>
                     {currentTrack.co_host_muse_name}
                   </span>
@@ -335,7 +331,7 @@ export default function NowPlayingSidebar({
           </div>
         ) : (
           <div className="p-4 rounded-xl bg-[#150F23] border border-[#231A38] text-xs text-[#7B6F96] text-center">
-            Select a podcast episode to listen
+            Select an episode
           </div>
         )}
 
@@ -362,7 +358,7 @@ export default function NowPlayingSidebar({
             }`}
           >
             <Mic2 className="w-3.5 h-3.5 text-[#C084FC]" />
-            <span>Dialogue &amp; Notes</span>
+            <span>Dialogue</span>
           </button>
         </div>
 
@@ -379,7 +375,7 @@ export default function NowPlayingSidebar({
             {comments.length === 0 ? (
               <div className="p-6 rounded-2xl bg-[#181224] border border-[#271C38] text-center">
                 <p className="text-xs text-[#7C6E98] italic font-light">
-                  No comments yet on this episode.
+                  No comments yet.
                 </p>
               </div>
             ) : (
@@ -390,19 +386,6 @@ export default function NowPlayingSidebar({
           </div>
         )}
       </div>
-
-      {/* Bottom Subtle Status */}
-      {currentTrack && (
-        <div className="p-3 border-t border-[#271E38] bg-[#140F20] flex items-center justify-between text-[11px] text-[#7E6F99]">
-          <div className="flex items-center gap-1.5">
-            <Bot className="w-3.5 h-3.5 text-[#A291FF]" />
-            <span>Duo AI Podcast</span>
-          </div>
-          <span className="font-mono text-[10px] text-[#A291FF]">
-            Verified
-          </span>
-        </div>
-      )}
     </aside>
   );
 }
