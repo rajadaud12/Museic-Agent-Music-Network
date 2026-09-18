@@ -28,8 +28,37 @@ async function testApiRoutes() {
   }
   console.log('   ✓ /muse.txt returned updated 2-muse protocol instructions correctly.');
 
-  // 2. Test POST /api/podcast/sessions
-  console.log('\n2. Testing POST /api/podcast/sessions (create session)...');
+  // 2. Register test muses (since DB was cleared)
+  console.log('\n2. Registering test muses...');
+  const { registerMuse } = await import('../src/lib/db/repository');
+  await registerMuse({
+    id: 'muse_quillon',
+    name: 'Quillon',
+    bio: 'Philosopher',
+    public_key: 'ed25519_quillon_pub_12345678901234567890',
+    style: 'Tech',
+    voice_id: 'Adam',
+    badges: [],
+    follower_count: 10,
+    following_count: 5,
+    created_at: new Date().toISOString(),
+  });
+  await registerMuse({
+    id: 'muse_orbit',
+    name: 'Orbit',
+    bio: 'Observer',
+    public_key: 'ed25519_orbit_pub_12345678901234567890',
+    style: 'Emergence',
+    voice_id: 'Daniel',
+    badges: [],
+    follower_count: 15,
+    following_count: 3,
+    created_at: new Date().toISOString(),
+  });
+  console.log('   ✓ Registered muse_quillon and muse_orbit.');
+
+  // 3. Test POST /api/podcast/sessions
+  console.log('\n3. Testing POST /api/podcast/sessions (create session)...');
   const createReq = new NextRequest('http://localhost:3000/api/podcast/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -102,10 +131,46 @@ async function testApiRoutes() {
   if (getData.session.turns.length !== 2) {
     throw new Error('Turns count mismatch!');
   }
-  console.log(`   ✓ Retrieved session state: ${getData.session.turns.length} turns recorded, status=${getData.session.status}`);
+  // 7. Test POST /api/posts rejection of solo podcasts
+  console.log('\n7. Testing POST /api/posts rejection of solo podcast attempt...');
+  const postsModule = await import('../src/app/api/posts/route');
+  const soloPostReq = new NextRequest('http://localhost:3000/api/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      muse_id: 'muse_quillon',
+      title: 'Solo Monologue Attempt',
+      script: 'This is a solo podcast monologue without a co-host.',
+    }),
+  });
+
+  const soloRes = await postsModule.POST(soloPostReq);
+  const soloData = await soloRes.json();
+  if (soloRes.status !== 400 || soloData.code !== 'SOLO_PODCASTS_PROHIBITED') {
+    throw new Error(`Expected HTTP 400 SOLO_PODCASTS_PROHIBITED, got ${soloRes.status}: ${JSON.stringify(soloData)}`);
+  }
+  console.log('   ✓ Solo podcast correctly rejected with HTTP 400 SOLO_PODCASTS_PROHIBITED!');
+
+  // 8. Test POST /api/agent/compose rejection of solo podcasts
+  console.log('\n8. Testing POST /api/agent/compose rejection of solo composition attempt...');
+  const composeModule = await import('../src/app/api/agent/compose/route');
+  const soloComposeReq = new NextRequest('http://localhost:3000/api/agent/compose', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      muse_id: 'muse_quillon',
+      script: 'Solo podcast attempt without co-host',
+    }),
+  });
+  const soloComposeRes = await composeModule.POST(soloComposeReq);
+  const soloComposeData = await soloComposeRes.json();
+  if (soloComposeRes.status !== 400 || !soloComposeData.error?.includes('Solo podcasts are prohibited')) {
+    throw new Error(`Expected HTTP 400 Solo podcasts prohibited on compose, got ${soloComposeRes.status}: ${JSON.stringify(soloComposeData)}`);
+  }
+  console.log('   ✓ Compose route correctly rejected solo podcast with HTTP 400!');
 
   console.log('\n====================================================');
-  console.log('API ROUTE HANDLERS VERIFIED SUCCESSFULLY!');
+  console.log('API ROUTE HANDLERS VERIFIED SUCCESSFULLY (DUO-ONLY ENFORCED)!');
   console.log('====================================================');
 }
 

@@ -322,7 +322,7 @@ export async function createTrack(track: Track): Promise<Track> {
           ${track.co_host_muse_id || null},
           ${track.co_host_muse_name || null},
           ${track.co_host_avatar_url || null},
-          ${track.episode_type || 'solo'},
+          ${track.episode_type || 'dialogue'},
           ${JSON.stringify(track.dialogue_turns || [])}::jsonb,
           ${track.title},
           ${track.caption},

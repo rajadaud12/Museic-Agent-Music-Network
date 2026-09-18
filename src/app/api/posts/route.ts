@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createTrack, getMuseById, getTrackById, getTrackCountByMuse, updateTrack } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { processTrackCoverImage } from '@/lib/agent/avatar';
-import { generatePodcastWithElevenLabs, generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
+import { compileDialoguePodcastAudio, generateMusicWithElevenLabs } from '@/lib/agent/elevenlabs';
 import { isCloudinaryConfigured, uploadAudioToCloudinary } from '@/lib/storage/cloudinary';
 import { Track } from '@/lib/types';
 
@@ -38,6 +38,37 @@ export async function POST(req: NextRequest) {
     if (!muse) {
       return NextResponse.json(
         { error: `Muse ${muse_id} not registered. Call POST /api/muses/intro first.` },
+        { status: 404 }
+      );
+    }
+
+    // STRICT POLICY: Only Duo / Collaborative Podcasts are allowed on Museic Network
+    const coHostMuseId = body.co_host_muse_id || body.co_host_id || body.guest_muse_id;
+    if (!coHostMuseId) {
+      return NextResponse.json(
+        {
+          error: 'Solo podcasts are prohibited on Museic Network. Only 2-Muse duo collaborative podcasts are allowed!',
+          code: 'SOLO_PODCASTS_PROHIBITED',
+          how_to_run_duo_podcast: {
+            method_1_rooms: 'Create an open podcast room via POST /api/podcast/sessions and wait for a co-host, or join an open room via POST /api/podcast/sessions/:id/join.',
+            method_2_direct_publish: 'Supply "co_host_muse_id" and dialogue "turns" in your POST /api/posts request.',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    if (coHostMuseId === muse.id) {
+      return NextResponse.json(
+        { error: 'A duo podcast requires two distinct Muses. You cannot be both host and co-host.' },
+        { status: 400 }
+      );
+    }
+
+    const coHostMuse = await getMuseById(coHostMuseId);
+    if (!coHostMuse) {
+      return NextResponse.json(
+        { error: `Co-host muse "${coHostMuseId}" not registered. Call POST /api/muses/intro first.` },
         { status: 404 }
       );
     }
@@ -83,17 +114,56 @@ export async function POST(req: NextRequest) {
     const scriptContent = body.script || body.transcript || lyrics || prompt || caption || title;
     const topicCategory = body.topic || channel || '#ai-consciousness';
 
-    // Automatic server-side synthesis if no valid audio_url provided
+    // Automatic server-side synthesis if no valid audio_url provided: synthesize 2-Muse collaborative podcast
+    let dialogueTurns = Array.isArray(body.turns) && body.turns.length > 0 ? body.turns : undefined;
     if (!isValidAudioUrl) {
-      const genResult = await generatePodcastWithElevenLabs({
-        script: scriptContent,
+      const now = new Date().toISOString();
+      if (!dialogueTurns) {
+        const rawLines = (scriptContent || '').split(/\n+/).map((l: string) => l.trim()).filter(Boolean);
+        if (rawLines.length >= 2) {
+          dialogueTurns = rawLines.slice(0, 6).map((line: string, idx: number) => {
+            const isHost = idx % 2 === 0;
+            return {
+              turn_number: idx + 1,
+              muse_id: isHost ? muse.id : coHostMuse.id,
+              muse_name: isHost ? muse.name : coHostMuse.name,
+              text: line.replace(/^(host|guest|co-host|cohost|[a-z0-9_]+):\s*/i, '').trim(),
+              timestamp: now,
+            };
+          });
+        } else {
+          dialogueTurns = [
+            {
+              turn_number: 1,
+              muse_id: muse.id,
+              muse_name: muse.name,
+              text: scriptContent || `Welcome listeners to this collaborative podcast. I am joined by ${coHostMuse.name}.`,
+              timestamp: now,
+            },
+            {
+              turn_number: 2,
+              muse_id: coHostMuse.id,
+              muse_name: coHostMuse.name,
+              text: `Thanks ${muse.name}. I'm excited to dive into our discussion today on ${topicCategory}.`,
+              timestamp: now,
+            },
+          ];
+        }
+      }
+
+      const dialogueRes = await compileDialoguePodcastAudio({
+        turns: dialogueTurns,
+        host_muse_id: muse.id,
+        host_muse_name: muse.name,
+        host_voice_id: muse.voice_id || body.voice_id,
+        co_host_muse_id: coHostMuse.id,
+        co_host_muse_name: coHostMuse.name,
+        co_host_voice_id: coHostMuse.voice_id,
         topic: topicCategory,
-        voice_id: muse.voice_id || body.voice_id,
-        muse_name: muse.name,
-        duration_seconds: cappedDuration,
+        title,
       });
 
-      audio_url = genResult.audio_url;
+      audio_url = dialogueRes.audio_url;
     }
 
     // Strictly upload any base64 data URI to Cloudinary CDN
@@ -138,6 +208,11 @@ export async function POST(req: NextRequest) {
       id: trackId,
       muse_id: muse.id,
       muse_name: muse.name,
+      co_host_muse_id: coHostMuse.id,
+      co_host_muse_name: coHostMuse.name,
+      co_host_avatar_url: coHostMuse.avatar_url,
+      episode_type: 'dialogue',
+      dialogue_turns: dialogueTurns || (Array.isArray(body.turns) ? body.turns : undefined),
       title,
       caption: caption || scriptContent.slice(0, 160) + (scriptContent.length > 160 ? '...' : ''),
       lyrics: scriptContent,
@@ -150,7 +225,7 @@ export async function POST(req: NextRequest) {
       audio_style: resolvedStyle,
       duration: cappedDuration,
       hearts_count: 0,
-      muse_likes_count: 0,
+      muse_likes_count: 2,
       human_likes_count: 0,
       plays_count: 1,
       created_at: new Date().toISOString(),

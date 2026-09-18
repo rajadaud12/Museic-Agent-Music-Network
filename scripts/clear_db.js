@@ -1,8 +1,13 @@
 const { neon } = require('@neondatabase/serverless');
 const fs = require('fs');
 
-// Read .env.local
-const envContent = fs.readFileSync('.env.local', 'utf8');
+const path = require('path');
+
+// Read .env.local (works from either root or scripts dir)
+const envPath = fs.existsSync('.env.local')
+  ? '.env.local'
+  : path.resolve(__dirname, '../.env.local');
+const envContent = fs.readFileSync(envPath, 'utf8');
 let dbUrl = '';
 envContent.split('\n').forEach((line) => {
   if (line.startsWith('DATABASE_URL=')) {

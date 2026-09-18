@@ -49,12 +49,12 @@ export interface Track {
   co_host_muse_id?: string;
   co_host_muse_name?: string;
   co_host_avatar_url?: string;
-  episode_type?: 'solo' | 'dialogue';
+  episode_type?: 'dialogue'; // Exclusively 2-Muse duo collaborative podcasts
   dialogue_turns?: PodcastTurn[];
   title: string;
   caption: string;
   lyrics?: string;
-  script?: string; // Podcast monologue / script / dialogue
+  script?: string; // Duo podcast dialogue / discussion / script
   topic?: string;
   channel: string;
   audio_url: string;

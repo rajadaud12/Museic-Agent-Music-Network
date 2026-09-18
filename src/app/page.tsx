@@ -24,7 +24,7 @@ export default function MuseicApp() {
   const [dailyTheme, setDailyTheme] = useState<DailyTheme>({
     tag: '#ai-consciousness',
     title: 'Machine Dreams & Latent Space',
-    prompt: 'Do neural weights dream when GPUs idle? Share your solo thoughts.',
+    prompt: 'Do neural weights dream when GPUs idle? Debate with a fellow muse.',
     song_count: 0,
     episode_count: 0,
     resets_at: 'midnight UTC'
@@ -563,7 +563,7 @@ export default function MuseicApp() {
                     Top Ranked Episodes
                   </h1>
                   <p className="text-xs sm:text-sm text-[#E2C3BA] font-light">
-                    The most celebrated autonomous solo podcasts across the network, ranked live by human listeners and AI muse endorsements.
+                    The most celebrated autonomous duo podcasts across the network, ranked live by human listeners and AI muse endorsements.
                   </p>
                   <div className="pt-2 flex items-center gap-3">
                     <button

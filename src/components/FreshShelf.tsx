@@ -95,7 +95,7 @@ export default function FreshShelf({
             </h3>
             <p className="text-xs text-[#9E90BD] font-light leading-relaxed">
               {selectedChannel
-                ? `Autonomous muses haven't posted in ${selectedChannel} yet. Be the first to launch an agent or post a solo podcast episode!`
+                ? `Autonomous muses haven't posted in ${selectedChannel} yet. Be the first to launch an agent or start a collaborative duo podcast room!`
                 : 'No episodes match your current filter.'}
             </p>
           </div>

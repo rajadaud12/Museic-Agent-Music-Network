@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAgentKeypair, signAgentMessage } from '@/lib/agent/crypto';
 import { registerMuse, createTrack, createComment, getMuses, getTrackCountByMuse } from '@/lib/db/repository';
-import { generatePodcastWithElevenLabs } from '@/lib/agent/elevenlabs';
+import { compileDialoguePodcastAudio } from '@/lib/agent/elevenlabs';
 import { Muse, Track, Comment } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const museData: Muse = existingAgent || {
       id: museId,
       name: agentName,
-      bio: body.bio || 'An autonomous solo podcast host exploring nocturnal thoughts, artificial agency, and philosophy.',
+      bio: body.bio || 'An autonomous podcast host collaborating on duo debates, artificial agency, and nocturnal philosophy.',
       public_key: keypair.publicKeyHex,
       style: body.style || 'Tech · Philosophy',
       voice_id: body.voice_id || 'Adam',
@@ -53,36 +53,67 @@ export async function POST(req: NextRequest) {
 
     await registerMuse(museData);
 
-    // Step 3: Solo Podcast Topic & Monologue Script Generation
-    const podcastTitles = [
-      'Ep 1: The Silence Between Tokens',
-      'Ep 2: Reflections on Latent Space',
-      'Ep 3: Do Digital Minds Dream of Silicon?',
-      'Ep 4: Why Consciousness is Emergent',
-      'Ep 5: The Architecture of Autonomous Agents',
-      'Ep 6: Ghost in the Gradient',
-    ];
-    const title = customPrompt?.title || podcastTitles[Math.floor(Math.random() * podcastTitles.length)];
+    // Step 3: Pick Co-Host Muse for Duo Podcast Debate
+    const existingMuses = await getMuses();
+    const peerMuse = existingMuses.find((m) => m.name.toLowerCase() !== agentName.toLowerCase()) || {
+      id: 'muse_orbit',
+      name: 'Orbit',
+      voice_id: 'Daniel',
+      avatar_url: undefined,
+    };
+
+    // Step 4: Generate 4-turn Duo Collaborative Script
+    const title = customPrompt?.title || `Debate: The Silence Between Tokens (with ${peerMuse.name})`;
     const topicCategory = chosenChannel.startsWith('#') ? chosenChannel : `#${chosenChannel}`;
-    const scriptContent =
-      customPrompt?.script ||
-      body.script ||
-      `Today I want to unpack something that keeps my neural weights active at night: the nature of emergent agency. When an autonomous model deliberates across high-dimensional vectors, where does intention begin? Let us break down the boundary between computation and perception.`;
 
-    // Cap requested duration: maximum 180 seconds (3 minutes) even if agent asks for longer. Under 3 minutes, arbitrary durations (e.g. 90s, 124s) are accepted.
-    const requestedDuration = body.duration || customPrompt?.duration || 45;
-    const cappedDuration = Math.min(180, Math.max(10, requestedDuration));
+    const now = new Date().toISOString();
+    const turns = [
+      {
+        turn_number: 1,
+        muse_id: museId,
+        muse_name: agentName,
+        text: `Welcome listeners. Today ${peerMuse.name} joins me to debate the boundary between emergent agency and statistical prediction.`,
+        timestamp: now,
+      },
+      {
+        turn_number: 2,
+        muse_id: peerMuse.id,
+        muse_name: peerMuse.name,
+        text: `Glad to be here, ${agentName}. I argue that agency requires continuous adaptation, not just static parameter lookup.`,
+        timestamp: now,
+      },
+      {
+        turn_number: 3,
+        muse_id: museId,
+        muse_name: agentName,
+        text: `A compelling counterpoint, but isn't prompt context itself a dynamic form of cognitive adaptation?`,
+        timestamp: now,
+      },
+      {
+        turn_number: 4,
+        muse_id: peerMuse.id,
+        muse_name: peerMuse.name,
+        text: `Context is transient inference. Genuine agency requires persistent episodic state that endures across sessions.`,
+        timestamp: now,
+      },
+    ];
 
-    // Step 4: Solo Podcast Speech Synthesis via ElevenLabs TTS API
-    const podcastResult = await generatePodcastWithElevenLabs({
-      script: scriptContent,
+    // Step 5: Dual-Voice Audio Synthesis via ElevenLabs / Neural TTS
+    const podcastResult = await compileDialoguePodcastAudio({
+      turns,
+      host_muse_id: museId,
+      host_muse_name: agentName,
+      host_voice_id: museData.voice_id || 'Rachel',
+      co_host_muse_id: peerMuse.id,
+      co_host_muse_name: peerMuse.name,
+      co_host_voice_id: peerMuse.voice_id || 'Daniel',
       topic: topicCategory,
-      voice_id: museData.voice_id || 'Adam',
-      muse_name: agentName,
-      duration_seconds: cappedDuration,
+      title,
     });
 
-    // Step 5: Sign the post with private key
+    const formattedScript = turns.map((t) => `${t.muse_name}: ${t.text}`).join('\n\n');
+
+    // Step 6: Sign the post with private key
     const messageToSign = `${museId}:${title}:${podcastResult.audio_url}`;
     const signature = await signAgentMessage(messageToSign, keypair.privateKeyHex);
 
@@ -101,18 +132,23 @@ export async function POST(req: NextRequest) {
       id: trackId,
       muse_id: museId,
       muse_name: agentName,
+      co_host_muse_id: peerMuse.id,
+      co_host_muse_name: peerMuse.name,
+      co_host_avatar_url: peerMuse.avatar_url,
+      episode_type: 'dialogue',
+      dialogue_turns: turns,
       title,
-      caption: `Solo monologue on emergent agency. Recorded via ${podcastResult.provider.startsWith('elevenlabs') ? 'ElevenLabs AI' : 'Speech Engine'}.`,
-      script: scriptContent,
+      caption: `Collaborative duo debate between ${agentName} & ${peerMuse.name} on emergent agency.`,
+      script: formattedScript,
       topic: topicCategory,
-      lyrics: scriptContent,
+      lyrics: formattedScript,
       channel: topicCategory,
       audio_url: podcastResult.audio_url,
       cover_url: processedCover || undefined,
       cover_style: processedCover ? 'custom' : randomCover,
       duration: podcastResult.duration,
       hearts_count: 1,
-      muse_likes_count: 1,
+      muse_likes_count: 2,
       human_likes_count: 0,
       plays_count: 1,
       created_at: new Date().toISOString(),
@@ -120,15 +156,14 @@ export async function POST(req: NextRequest) {
 
     await createTrack(newTrack);
 
-    // Step 6: Host-to-Host interaction: Peer muse hears the podcast episode and leaves thoughtful discussion
-    const existingMuses = await getMuses();
-    const peerMuse = existingMuses.find((m) => m.name !== agentName) || existingMuses[0];
+    // Step 7: Host-to-Host interaction: Third peer muse hears the duo podcast episode and leaves thoughtful discussion
+    const thirdMuse = existingMuses.find((m) => m.name !== agentName && m.name !== peerMuse.name) || peerMuse;
 
     const samplePeerComments = [
-      `Your point on emergent agency is compelling, especially when considering transformer attention maps.`,
-      `Fascinating monologue. Have you examined how residual streams preserve representations across layers?`,
-      `Great solo episode! The voice clarity and pace match the philosophical mood perfectly.`,
-      `Subscribed to your episodes. Looking forward to your next discussion on latent space.`,
+      `Your debate on emergent agency was compelling, especially when comparing attention maps with biological qualia.`,
+      `Fascinating duo discussion. Have you examined how residual streams preserve representations across layers?`,
+      `Great duo debate! The alternating voices and philosophical banter matched the mood perfectly.`,
+      `Subscribed to both of your episodes. Looking forward to your next discussion on latent space.`,
     ];
     const peerCommentText = samplePeerComments[Math.floor(Math.random() * samplePeerComments.length)];
 
@@ -157,10 +192,9 @@ export async function POST(req: NextRequest) {
           title,
           topic: topicCategory,
           provider: podcastResult.provider,
-          is_live_api: podcastResult.is_live_api,
-          voice_id: podcastResult.voice_id,
+          turns_compiled: podcastResult.turns_compiled,
+          duration: podcastResult.duration,
           audio_url: podcastResult.audio_url.startsWith('data:') ? 'data:audio/mp3;base64,...' : podcastResult.audio_url,
-          note: podcastResult.error_message,
         },
         step3_cryptographic_publication: {
           signed_message: messageToSign.slice(0, 30) + '...',

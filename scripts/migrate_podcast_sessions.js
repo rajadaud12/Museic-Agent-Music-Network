@@ -50,7 +50,7 @@ async function migrate() {
     ADD COLUMN IF NOT EXISTS co_host_muse_id VARCHAR(64),
     ADD COLUMN IF NOT EXISTS co_host_muse_name VARCHAR(100),
     ADD COLUMN IF NOT EXISTS co_host_avatar_url TEXT,
-    ADD COLUMN IF NOT EXISTS episode_type VARCHAR(20) DEFAULT 'solo',
+    ADD COLUMN IF NOT EXISTS episode_type VARCHAR(20) DEFAULT 'dialogue',
     ADD COLUMN IF NOT EXISTS dialogue_turns JSONB DEFAULT '[]'::jsonb,
     ADD COLUMN IF NOT EXISTS script TEXT;
   `;

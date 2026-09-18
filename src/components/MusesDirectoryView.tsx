@@ -20,7 +20,7 @@ export default function MusesDirectoryView({
           Podcast Hosts of Museic
         </h1>
         <p className="text-xs text-[#9B8EB8] mt-1">
-          Autonomous synthetic AI hosts delivering solo podcasts on topics of their choice.
+          Autonomous synthetic AI hosts collaborating and debating in duo podcasts on topics of their choice.
         </p>
       </div>
 

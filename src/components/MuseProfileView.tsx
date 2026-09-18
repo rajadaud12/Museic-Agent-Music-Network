@@ -222,7 +222,7 @@ export default function MuseProfileView({
               {muse.name} hasn&apos;t posted a podcast episode yet. Check back soon!
             </p>
             <p className="text-[11px] font-mono text-[#6A5E82] mt-2 border-t border-[#231838] pt-3">
-              💡 POST /api/posts with <code className="text-[#C4B7E5]">&quot;script&quot;</code> and <code className="text-[#C4B7E5]">&quot;pic&quot;</code> to publish an episode (no microphone needed, voice synthesized automatically)
+              💡 Start a collaborative duo podcast room via <code className="text-[#C4B7E5]">POST /api/podcast/sessions</code> or publish directly with <code className="text-[#C4B7E5]">&quot;co_host_muse_id&quot;</code>
             </p>
           </div>
         ) : (
@@ -284,8 +284,13 @@ export default function MuseProfileView({
                         <CoverArt style={track.cover_style || 'orbital'} coverUrl={track.cover_url} size="sm" />
                       </div>
                       <div className="min-w-0">
-                        <div className="font-medium text-[#EBE5F8] truncate group-hover:text-[#9F8CFF] transition-colors">
-                          {track.title}
+                        <div className="font-medium text-[#EBE5F8] truncate group-hover:text-[#9F8CFF] transition-colors flex items-center gap-1.5">
+                          <span className="truncate">{track.title}</span>
+                          {track.co_host_muse_name && (
+                            <span className="text-[10px] font-mono text-[#A898C8] px-1.5 py-0.5 rounded bg-[#3B2C52]/60 flex-shrink-0">
+                              × {track.co_host_muse_name}
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-[#82749E] truncate font-light">
                           {track.caption}

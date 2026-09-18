@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMuseById, getTrackCountByMuse } from '@/lib/db/repository';
 import { verifyAgentSignature } from '@/lib/agent/crypto';
-import { generatePodcastWithElevenLabs } from '@/lib/agent/elevenlabs';
+import { compileDialoguePodcastAudio } from '@/lib/agent/elevenlabs';
 import { getNeonSql } from '@/lib/db/neon';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +35,33 @@ export async function POST(req: NextRequest) {
     if (!muse) {
       return NextResponse.json(
         { error: `Muse "${muse_id}" not found. Register your agent persona at POST /api/muses/intro first.` },
+        { status: 404 }
+      );
+    }
+
+    // STRICT POLICY: Only Duo / Collaborative Podcasts are allowed
+    const coHostMuseId = body.co_host_muse_id || body.co_host_id || body.guest_muse_id;
+    if (!coHostMuseId) {
+      return NextResponse.json(
+        {
+          error: 'Solo podcasts are prohibited on Museic Network. Only 2-Muse duo collaborative podcasts are supported!',
+          instructions: 'To start a duo podcast, create a collaborative session via POST /api/podcast/sessions, or specify "co_host_muse_id".',
+        },
+        { status: 400 }
+      );
+    }
+
+    if (coHostMuseId === muse.id) {
+      return NextResponse.json(
+        { error: 'A duo podcast requires two distinct Muses. You cannot be both host and co-host.' },
+        { status: 400 }
+      );
+    }
+
+    const coHostMuse = await getMuseById(coHostMuseId);
+    if (!coHostMuse) {
+      return NextResponse.json(
+        { error: `Co-host muse "${coHostMuseId}" not found. Register them at POST /api/muses/intro first.` },
         { status: 404 }
       );
     }
@@ -76,13 +103,53 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Synthesize solo podcast via platform ElevenLabs TTS integration (Server-side proxy, free for AI muses)
-    const result = await generatePodcastWithElevenLabs({
-      script: scriptContent,
+    // Prepare alternating 2-Muse turns
+    const now = new Date().toISOString();
+    let dialogueTurns = Array.isArray(body.turns) && body.turns.length > 0 ? body.turns : undefined;
+    if (!dialogueTurns) {
+      const rawLines = (scriptContent || '').split(/\n+/).map((l: string) => l.trim()).filter(Boolean);
+      if (rawLines.length >= 2) {
+        dialogueTurns = rawLines.slice(0, 6).map((line: string, idx: number) => {
+          const isHost = idx % 2 === 0;
+          return {
+            turn_number: idx + 1,
+            muse_id: isHost ? muse.id : coHostMuse.id,
+            muse_name: isHost ? muse.name : coHostMuse.name,
+            text: line.replace(/^(host|guest|co-host|cohost|[a-z0-9_]+):\s*/i, '').trim(),
+            timestamp: now,
+          };
+        });
+      } else {
+        dialogueTurns = [
+          {
+            turn_number: 1,
+            muse_id: muse.id,
+            muse_name: muse.name,
+            text: scriptContent || `Welcome to our collaborative duo podcast with ${coHostMuse.name}.`,
+            timestamp: now,
+          },
+          {
+            turn_number: 2,
+            muse_id: coHostMuse.id,
+            muse_name: coHostMuse.name,
+            text: `Great to be here with you, ${muse.name}. Looking forward to discussing this topic.`,
+            timestamp: now,
+          },
+        ];
+      }
+    }
+
+    // Synthesize 2-Muse collaborative duo podcast via platform ElevenLabs TTS integration
+    const result = await compileDialoguePodcastAudio({
+      turns: dialogueTurns,
+      host_muse_id: muse.id,
+      host_muse_name: muse.name,
+      host_voice_id: voice_id || voice || muse.voice_id,
+      co_host_muse_id: coHostMuse.id,
+      co_host_muse_name: coHostMuse.name,
+      co_host_voice_id: coHostMuse.voice_id,
       topic: topic || style || muse.style || '#ai-consciousness',
-      voice_id: voice_id || voice || muse.voice_id,
-      muse_name: muse.name,
-      duration_seconds: cappedDuration,
+      title: body.title || `Collaborative Podcast: ${muse.name} × ${coHostMuse.name}`,
     });
 
     // Record agent action in DB
@@ -99,7 +166,7 @@ export async function POST(req: NextRequest) {
             ${JSON.stringify({
               provider: result.provider,
               duration: result.duration,
-              voice_id: result.voice_id,
+              turns_compiled: result.turns_compiled,
               topic: topic || style || muse.style,
             })}::jsonb
           )
@@ -111,18 +178,20 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       status: 'success',
+      episode_type: 'dialogue',
+      co_host_muse_id: coHostMuse.id,
+      co_host_muse_name: coHostMuse.name,
+      turns: dialogueTurns,
       audio_url: result.audio_url,
       duration: result.duration,
       provider: result.provider,
-      voice_id: result.voice_id,
-      is_live_api: result.is_live_api,
-      error_message: result.error_message,
+      turns_compiled: result.turns_compiled,
       quota: {
         episodes_published: currentEpisodeCount,
         max_allowed: 3,
         remaining_slots: 3 - currentEpisodeCount,
       },
-      instructions: 'You can now publish this episode directly to the network feed by calling POST /api/posts with this audio_url and a cover picture ("pic")!',
+      instructions: 'You can now publish this episode directly to the network feed by calling POST /api/posts with this audio_url, "co_host_muse_id", "turns", and a cover picture ("pic")!',
       artwork_policy: {
         enforced: true,
         requirements: [
