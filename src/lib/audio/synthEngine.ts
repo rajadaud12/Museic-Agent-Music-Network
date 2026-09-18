@@ -2,18 +2,23 @@
  * Audio Playback and Procedural Synth Engine for Museic
  * Supports seamless HTML5 Audio streaming (ElevenLabs MP3s, base64 data URIs)
  * + Gentle generative ambient synth fallback.
- * Prevents race conditions, AbortError crashes, and audio drone hums.
+ * Prevents race conditions, AbortError crashes, restarts from pause, and seek bugs.
  */
 
 class SynthAudioEngine {
   private ctx: AudioContext | null = null;
   private isPlaying: boolean = false;
   private currentTrackId: string | null = null;
+  private currentAudioUrl: string | null = null;
+  private currentElapsed: number = 0;
+  private currentDuration: number = 180;
+  private pendingSeek: number | null = null;
   private masterGain: GainNode | null = null;
   private activeNodes: (AudioNode | any)[] = [];
   private htmlAudio: HTMLAudioElement | null = null;
   private timerInterval: any = null;
   private currentSessionId: number = 0;
+  private currentPlaybackRate: number = 1.0;
 
   public onTimeUpdate: ((currentSec: number, durationSec: number) => void) | null = null;
   public onTrackEnded: (() => void) | null = null;
@@ -34,25 +39,49 @@ class SynthAudioEngine {
     }
   }
 
-  private currentPlaybackRate: number = 1.0;
-
   private getAudio(): HTMLAudioElement {
     if (!this.htmlAudio) {
       this.htmlAudio = new Audio();
       this.htmlAudio.preload = 'auto';
       this.htmlAudio.playbackRate = this.currentPlaybackRate;
 
+      this.htmlAudio.onloadedmetadata = () => {
+        if (this.htmlAudio && isFinite(this.htmlAudio.duration) && this.htmlAudio.duration > 0) {
+          this.currentDuration = this.htmlAudio.duration;
+        }
+        if (this.pendingSeek !== null && this.htmlAudio) {
+          try {
+            this.htmlAudio.currentTime = this.pendingSeek;
+            this.currentElapsed = this.pendingSeek;
+            this.pendingSeek = null;
+          } catch (e) {}
+        }
+        if (this.onTimeUpdate && this.htmlAudio) {
+          this.onTimeUpdate(this.htmlAudio.currentTime, this.getDuration());
+        }
+      };
+
+      this.htmlAudio.ondurationchange = () => {
+        if (this.htmlAudio && isFinite(this.htmlAudio.duration) && this.htmlAudio.duration > 0) {
+          this.currentDuration = this.htmlAudio.duration;
+        }
+      };
+
       this.htmlAudio.ontimeupdate = () => {
-        if (this.onTimeUpdate && this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
-          const dur = this.htmlAudio.duration && !isNaN(this.htmlAudio.duration) && isFinite(this.htmlAudio.duration)
-            ? this.htmlAudio.duration
-            : 180;
-          this.onTimeUpdate(this.htmlAudio.currentTime, dur);
+        if (this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
+          this.currentElapsed = this.htmlAudio.currentTime;
+          if (this.htmlAudio.duration && isFinite(this.htmlAudio.duration) && this.htmlAudio.duration > 0) {
+            this.currentDuration = this.htmlAudio.duration;
+          }
+          if (this.onTimeUpdate) {
+            this.onTimeUpdate(this.htmlAudio.currentTime, this.getDuration());
+          }
         }
       };
 
       this.htmlAudio.onended = () => {
         this.isPlaying = false;
+        this.currentElapsed = 0;
         if (this.onTrackEnded) {
           this.onTrackEnded();
         }
@@ -61,7 +90,7 @@ class SynthAudioEngine {
       this.htmlAudio.onerror = (e) => {
         console.warn('HTML Audio error event, falling back to ambient synthesis:', e);
         if (this.isPlaying && this.currentTrackId) {
-          this.startProceduralSynth('ambient', 180);
+          this.startProceduralSynth('ambient', this.currentDuration);
         }
       };
     }
@@ -78,11 +107,47 @@ class SynthAudioEngine {
     }
   }
 
-  public async play(trackId: string, audioUrl?: string, style?: string, duration: number = 180) {
+  public async play(
+    trackId: string,
+    audioUrl?: string,
+    style?: string,
+    duration: number = 180,
+    forceRestart: boolean = false
+  ) {
     const sessionId = ++this.currentSessionId;
-    this.stopProceduralSynth();
-    this.isPlaying = true;
+    this.currentDuration = duration || 180;
+
+    const isSameTrack = this.currentTrackId === trackId;
     this.currentTrackId = trackId;
+    this.isPlaying = true;
+
+    // 1. If same track, not forced to restart: RESUME playback!
+    if (isSameTrack && !forceRestart) {
+      if (this.htmlAudio && this.htmlAudio.src) {
+        this.stopProceduralSynth();
+        try {
+          if (this.ctx && this.ctx.state === 'suspended') {
+            await this.ctx.resume().catch(() => {});
+          }
+          await this.htmlAudio.play();
+          return;
+        } catch (err: any) {
+          if (err?.name === 'AbortError' || sessionId !== this.currentSessionId) {
+            return;
+          }
+          console.warn('Resume on same track failed, resetting source:', err?.message || err);
+        }
+      } else {
+        // Procedural synth resume from current position (preserves currentElapsed)
+        this.startProceduralSynth(style || 'ambient', this.currentDuration);
+        return;
+      }
+    }
+
+    // 2. New track or forced restart:
+    this.stopProceduralSynth();
+    this.currentAudioUrl = audioUrl || null;
+    this.currentElapsed = 0;
 
     // Check if valid audio file, stream endpoint, or base64 data URI
     if (
@@ -100,8 +165,12 @@ class SynthAudioEngine {
           audio.pause();
         }
 
-        audio.src = audioUrl;
+        // Only re-assign src if it's different to prevent redundant re-buffering
+        if (audio.src !== audioUrl && !audio.src.endsWith(audioUrl)) {
+          audio.src = audioUrl;
+        }
         audio.currentTime = 0;
+        audio.playbackRate = this.currentPlaybackRate;
 
         const playPromise = audio.play();
         if (playPromise !== undefined) {
@@ -109,7 +178,6 @@ class SynthAudioEngine {
         }
         return;
       } catch (err: any) {
-        // AbortError is normal when switching quickly between tracks or pausing
         if (err?.name === 'AbortError' || sessionId !== this.currentSessionId) {
           return;
         }
@@ -123,11 +191,29 @@ class SynthAudioEngine {
     this.startProceduralSynth(style || 'ambient', Math.min(180, duration));
   }
 
+  public async resume() {
+    this.isPlaying = true;
+    if (this.htmlAudio && this.htmlAudio.src) {
+      try {
+        if (this.ctx && this.ctx.state === 'suspended') {
+          await this.ctx.resume().catch(() => {});
+        }
+        await this.htmlAudio.play();
+        return;
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          console.warn('Resume error on HTML Audio:', err);
+        }
+      }
+    } else if (this.currentTrackId) {
+      this.startProceduralSynth('ambient', this.currentDuration);
+    }
+  }
+
   private startProceduralSynth(style: string, duration: number) {
     this.initContext();
     if (!this.ctx || !this.masterGain) return;
 
-    let elapsed = 0;
     const s = (style || '').toLowerCase();
     let baseNotes = [220.00, 261.63, 329.63, 392.00]; // Ambient A Minor 7 default
     let intervalMs = 1500;
@@ -216,11 +302,11 @@ class SynthAudioEngine {
         if (this.timerInterval) clearInterval(this.timerInterval);
         return;
       }
-      elapsed += 1;
+      this.currentElapsed += 1;
       if (this.onTimeUpdate) {
-        this.onTimeUpdate(elapsed, duration);
+        this.onTimeUpdate(this.currentElapsed, duration);
       }
-      if (elapsed >= duration) {
+      if (this.currentElapsed >= duration) {
         this.stop();
         if (this.onTrackEnded) this.onTrackEnded();
       }
@@ -233,26 +319,47 @@ class SynthAudioEngine {
     if (this.htmlAudio) {
       try {
         this.htmlAudio.pause();
+        if (!isNaN(this.htmlAudio.currentTime)) {
+          this.currentElapsed = this.htmlAudio.currentTime;
+        }
       } catch (e) {}
     }
     this.stopProceduralSynth();
   }
 
   public seek(seconds: number) {
-    if (this.htmlAudio && !isNaN(seconds)) {
+    const clamped = Math.max(0, seconds);
+    this.currentElapsed = clamped;
+
+    if (this.htmlAudio && this.htmlAudio.src) {
       try {
-        this.htmlAudio.currentTime = Math.max(0, seconds);
-      } catch (e) {}
+        const dur = this.getDuration();
+        const target = Math.min(dur, clamped);
+        if (this.htmlAudio.readyState >= 1) {
+          this.htmlAudio.currentTime = target;
+        } else {
+          this.pendingSeek = target;
+        }
+      } catch (e) {
+        console.warn('Seek error on audio:', e);
+      }
+    }
+
+    // Immediately trigger UI update so scrubbing feels instantaneous
+    if (this.onTimeUpdate) {
+      this.onTimeUpdate(clamped, this.getDuration());
     }
   }
 
-  public skip(seconds: number) {
+  public skip(seconds: number): number {
+    let current = this.currentElapsed;
     if (this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
-      try {
-        const dur = this.htmlAudio.duration || 180;
-        this.htmlAudio.currentTime = Math.max(0, Math.min(dur, this.htmlAudio.currentTime + seconds));
-      } catch (e) {}
+      current = this.htmlAudio.currentTime;
     }
+    const dur = this.getDuration();
+    const target = Math.max(0, Math.min(dur, current + seconds));
+    this.seek(target);
+    return target;
   }
 
   public setPlaybackRate(rate: number) {
@@ -268,6 +375,9 @@ class SynthAudioEngine {
     this.isPlaying = false;
     this.currentSessionId++;
     this.currentTrackId = null;
+    this.currentAudioUrl = null;
+    this.currentElapsed = 0;
+    this.pendingSeek = null;
     if (this.htmlAudio) {
       try {
         this.htmlAudio.pause();
@@ -299,6 +409,20 @@ class SynthAudioEngine {
       }
     }
     this.activeNodes = [];
+  }
+
+  public getDuration(): number {
+    if (this.htmlAudio && this.htmlAudio.duration && isFinite(this.htmlAudio.duration) && this.htmlAudio.duration > 0) {
+      return this.htmlAudio.duration;
+    }
+    return this.currentDuration || 180;
+  }
+
+  public getCurrentTime(): number {
+    if (this.htmlAudio && !isNaN(this.htmlAudio.currentTime)) {
+      return this.htmlAudio.currentTime;
+    }
+    return this.currentElapsed;
   }
 
   public getIsPlaying(): boolean {

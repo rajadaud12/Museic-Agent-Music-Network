@@ -53,12 +53,22 @@ export default function MusicPlayer({
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState<number>(playbackRate);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragTime, setDragTime] = useState<number | null>(null);
+  const scrubberRef = React.useRef<HTMLDivElement>(null);
 
   if (!currentTrack) return null;
 
+  const effectiveDuration = duration > 0 ? duration : (currentTrack.duration || 180);
+  const displayTime = isDragging && dragTime !== null ? dragTime : currentTime;
+  const progressPercent = effectiveDuration > 0
+    ? Math.min(100, Math.max(0, (displayTime / effectiveDuration) * 100))
+    : 0;
+
   const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
+    const sClamped = Math.max(0, Math.floor(secs || 0));
+    const m = Math.floor(sClamped / 60);
+    const s = Math.floor(sClamped % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
@@ -88,7 +98,48 @@ export default function MusicPlayer({
     }
   };
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const calculateTimeFromX = (clientX: number) => {
+    if (!scrubberRef.current || effectiveDuration <= 0) return 0;
+    const rect = scrubberRef.current.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+    return ratio * effectiveDuration;
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
+    setIsDragging(true);
+    const newTime = calculateTimeFromX(e.clientX);
+    setDragTime(newTime);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    const newTime = calculateTimeFromX(e.clientX);
+    setDragTime(newTime);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (err) {}
+      const finalTime = dragTime !== null ? dragTime : calculateTimeFromX(e.clientX);
+      onSeek(finalTime);
+      setIsDragging(false);
+      setDragTime(null);
+    }
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
+    setIsDragging(false);
+    setDragTime(null);
+  };
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 h-20 bg-[#13101A] border-t border-[#271E38] px-6 flex items-center justify-between z-30 select-none shadow-2xl backdrop-blur-md">
@@ -154,7 +205,13 @@ export default function MusicPlayer({
 
           {/* 15s Rewind */}
           <button
-            onClick={() => onSkip ? onSkip(-15) : onSeek(Math.max(0, currentTime - 15))}
+            onClick={() => {
+              if (onSkip) {
+                onSkip(-15);
+              } else {
+                onSeek(Math.max(0, currentTime - 15));
+              }
+            }}
             className="relative text-[#A291FF] hover:text-white transition-colors cursor-pointer p-1"
             title="Rewind 15 seconds"
           >
@@ -179,7 +236,13 @@ export default function MusicPlayer({
 
           {/* 15s Forward */}
           <button
-            onClick={() => onSkip ? onSkip(15) : onSeek(Math.min(duration, currentTime + 15))}
+            onClick={() => {
+              if (onSkip) {
+                onSkip(15);
+              } else {
+                onSeek(Math.min(effectiveDuration, currentTime + 15));
+              }
+            }}
             className="relative text-[#A291FF] hover:text-white transition-colors cursor-pointer p-1"
             title="Forward 15 seconds"
           >
@@ -201,28 +264,31 @@ export default function MusicPlayer({
 
         {/* Scrubber Bar */}
         <div className="w-full flex items-center gap-2 text-[10px] font-mono text-[#776991]">
-          <span className="w-8 text-right">{formatTime(currentTime)}</span>
+          <span className="w-8 text-right tabular-nums">{formatTime(displayTime)}</span>
 
           <div
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const clickX = e.clientX - rect.left;
-              const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-              onSeek(ratio * duration);
-            }}
-            className="relative flex-1 h-1 bg-[#2E2445] hover:h-1.5 rounded-full cursor-pointer transition-all group"
+            ref={scrubberRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
+            className="relative flex-1 py-2 -my-2 flex items-center cursor-pointer group"
           >
-            <div
-              className="absolute left-0 top-0 bottom-0 bg-[#A08DFF] group-hover:bg-[#8B72FF] rounded-full"
-              style={{ width: `${progressPercent}%` }}
-            />
-            <div
-              className="absolute -top-1 w-3 h-3 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-              style={{ left: `calc(${progressPercent}% - 6px)` }}
-            />
+            <div className="w-full h-1 group-hover:h-1.5 bg-[#2E2445] rounded-full relative transition-all">
+              <div
+                className="absolute left-0 top-0 bottom-0 bg-[#A08DFF] group-hover:bg-[#8B72FF] rounded-full"
+                style={{ width: `${progressPercent}%` }}
+              />
+              <div
+                className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white transition-all shadow-md ${
+                  isDragging ? 'opacity-100 scale-125' : 'opacity-0 group-hover:opacity-100'
+                }`}
+                style={{ left: `calc(${progressPercent}% - 6px)` }}
+              />
+            </div>
           </div>
 
-          <span className="w-8">{formatTime(duration)}</span>
+          <span className="w-8 tabular-nums">{formatTime(effectiveDuration)}</span>
         </div>
       </div>
 

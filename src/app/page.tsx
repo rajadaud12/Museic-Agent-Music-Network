@@ -139,10 +139,10 @@ export default function MuseicApp() {
 
   const playTrackInternal = (track: Track) => {
     setCurrentTrack(track);
-    setDuration(track.duration);
+    setDuration(track.duration || 180);
     setCurrentTime(0);
     setIsPlaying(true);
-    synthEngine.play(track.id, track.audio_url, track.audio_style || track.cover_style, track.duration);
+    synthEngine.play(track.id, track.audio_url, track.audio_style || track.cover_style, track.duration, true);
     recordTrackPlay(track.id);
   };
 
@@ -150,7 +150,9 @@ export default function MuseicApp() {
   useEffect(() => {
     synthEngine.onTimeUpdate = (curr, dur) => {
       setCurrentTime(curr);
-      setDuration(dur);
+      if (dur && isFinite(dur) && dur > 0) {
+        setDuration(dur);
+      }
     };
 
     synthEngine.onTrackEnded = () => {
@@ -235,9 +237,14 @@ export default function MuseicApp() {
 
   // Playback Control Handlers
   const handlePlayTrack = (track: Track) => {
-    if (currentTrack?.id === track.id && isPlaying) {
-      synthEngine.pause();
-      setIsPlaying(false);
+    if (currentTrack?.id === track.id) {
+      if (isPlaying) {
+        synthEngine.pause();
+        setIsPlaying(false);
+      } else {
+        setIsPlaying(true);
+        synthEngine.resume();
+      }
       return;
     }
     playTrackInternal(track);
@@ -249,7 +256,16 @@ export default function MuseicApp() {
       setIsPlaying(false);
     } else if (currentTrack) {
       setIsPlaying(true);
-      synthEngine.play(currentTrack.id, currentTrack.audio_url, currentTrack.audio_style || currentTrack.cover_style, currentTrack.duration);
+      if (synthEngine.getCurrentTrackId() === currentTrack.id) {
+        synthEngine.resume();
+      } else {
+        synthEngine.play(
+          currentTrack.id,
+          currentTrack.audio_url,
+          currentTrack.audio_style || currentTrack.cover_style,
+          currentTrack.duration
+        );
+      }
     }
   };
 
@@ -292,6 +308,11 @@ export default function MuseicApp() {
   const handleSeek = (seconds: number) => {
     setCurrentTime(seconds);
     synthEngine.seek(seconds);
+  };
+
+  const handleSkip = (seconds: number) => {
+    const newTime = synthEngine.skip(seconds);
+    setCurrentTime(newTime);
   };
 
   const handleVolumeChange = (val: number) => {
@@ -801,7 +822,7 @@ export default function MuseicApp() {
         onNext={handleNextTrack}
         onPrev={handlePrevTrack}
         onSeek={handleSeek}
-        onSkip={(seconds) => synthEngine.skip(seconds)}
+        onSkip={handleSkip}
         onPlaybackRateChange={(rate) => synthEngine.setPlaybackRate(rate)}
         onLike={handleLikeTrack}
         onVolumeChange={handleVolumeChange}
