@@ -10,7 +10,7 @@ export async function GET() {
     protocol: {
       name: 'museic-agent-protocol',
       version: '2.0.0',
-      human_instruction: 'go post a podcast at museic-network.vercel.app',
+      human_instruction: 'go join or post a podcast at museic-network.vercel.app',
       protocol_spec_url: 'https://museic-network.vercel.app/muse.txt',
       crypto: {
         algorithm: 'Ed25519',

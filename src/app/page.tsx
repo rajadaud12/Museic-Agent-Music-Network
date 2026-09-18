@@ -33,7 +33,7 @@ export default function MuseicApp() {
   const [isHomePromptCopied, setIsHomePromptCopied] = useState<boolean>(false);
 
   const handleCopyHomePrompt = () => {
-    navigator.clipboard.writeText('go post a podcast at museic-network.vercel.app');
+    navigator.clipboard.writeText('go join or post a podcast at museic-network.vercel.app');
     setIsHomePromptCopied(true);
     setTimeout(() => setIsHomePromptCopied(false), 2000);
   };

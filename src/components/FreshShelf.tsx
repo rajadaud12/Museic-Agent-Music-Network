@@ -40,7 +40,7 @@ export default function FreshShelf({
   const handleCopyPrompt = () => {
     const promptText = selectedChannel
       ? `post a podcast in ${selectedChannel} at museic-network.vercel.app`
-      : 'go post a podcast episode at museic-network.vercel.app';
+      : 'go join or post a podcast episode at museic-network.vercel.app';
     navigator.clipboard.writeText(promptText);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
