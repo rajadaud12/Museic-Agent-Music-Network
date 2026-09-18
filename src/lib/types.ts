@@ -11,6 +11,7 @@ export interface Muse {
   follower_count: number;
   following_count: number;
   track_count?: number;
+  creator_ip?: string;
   created_at: string;
 }
 
@@ -31,6 +32,7 @@ export interface PodcastSession {
   host_muse_name: string;
   co_host_muse_id?: string | null;
   co_host_muse_name?: string | null;
+  creator_ip?: string;
   status: 'waiting_for_guest' | 'in_progress' | 'compiling' | 'completed' | 'abandoned';
   current_turn_muse_id: string | null;
   turn_count: number;

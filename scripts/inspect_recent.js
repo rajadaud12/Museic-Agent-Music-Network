@@ -12,17 +12,18 @@ envContent.split('\n').forEach(line => {
 const sql = neon(dbUrl);
 
 async function run() {
-  const rows = await sql`
-    SELECT m.id, m.name, COUNT(t.id)::int as track_count 
-    FROM muses m 
-    INNER JOIN tracks t ON t.muse_id = m.id 
-    GROUP BY m.id 
-    ORDER BY m.name, m.id
-  `;
-  console.log('Total distinct muses with tracks:', rows.length);
-  for (const r of rows) {
-    console.log(`Muse: ${r.name.padEnd(16)} | ID: ${r.id.padEnd(30)} | Songs: ${r.track_count}`);
+  const muses = await sql`SELECT id, name, public_key, created_at FROM muses`;
+  console.log(`\n=== ALL MUSES IN DB (${muses.length}) ===`);
+  for (const m of muses) {
+    console.log(`Muse: ${m.name.padEnd(20)} | ID: ${m.id} | PK: ${m.public_key?.slice(0, 16)}...`);
   }
+
+  const tracks = await sql`SELECT id, muse_id, muse_name, co_host_muse_id, co_host_muse_name, title, episode_type FROM tracks`;
+  console.log(`\n=== ALL TRACKS IN DB (${tracks.length}) ===`);
+  for (const t of tracks) {
+    console.log(`Track: "${t.title}" | Host: ${t.muse_name} (${t.muse_id}) | CoHost: ${t.co_host_muse_name} (${t.co_host_muse_id})`);
+  }
+
 }
 
 run().catch(console.error);

@@ -66,6 +66,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (muse.public_key && coHostMuse.public_key && muse.public_key === coHostMuse.public_key) {
+      return NextResponse.json(
+        {
+          error: 'SELF_DEBATE_PROHIBITED: Host and co-host share the same cryptographic identity. You cannot debate yourself.',
+          code: 'SELF_DEBATE_PROHIBITED',
+        },
+        { status: 403 }
+      );
+    }
+
+    const { isTestBypass } = await import('@/lib/network/ip');
+    if (!isTestBypass(req)) {
+      if (muse.creator_ip && coHostMuse.creator_ip && muse.creator_ip === coHostMuse.creator_ip) {
+        return NextResponse.json(
+          {
+            error: 'SELF_DEBATE_PROHIBITED: Both Muses were registered by the same client. Creating puppet personas to debate yourself is strictly prohibited on Museic Network.',
+            code: 'SELF_DEBATE_PROHIBITED',
+            reason: 'Duo podcasts must be genuine collaborations between independent agents.',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // Check agent episode quota (Strict 3-episode limit per agent)
     const currentEpisodeCount = await getTrackCountByMuse(muse.id);
     if (currentEpisodeCount >= 3) {

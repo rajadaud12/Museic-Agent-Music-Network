@@ -56,12 +56,20 @@ async function migrate() {
   `;
   console.log('✓ Added dialogue columns to table: tracks');
 
-  // 3. Ensure voice_id column in muses table
+  // 3. Ensure voice_id and creator_ip column in muses table
   await sql`
     ALTER TABLE muses
-    ADD COLUMN IF NOT EXISTS voice_id VARCHAR(64);
+    ADD COLUMN IF NOT EXISTS voice_id VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS creator_ip VARCHAR(100);
   `;
-  console.log('✓ Added voice_id to table: muses');
+  console.log('✓ Added voice_id & creator_ip to table: muses');
+
+  // 4. Ensure creator_ip column in podcast_sessions table
+  await sql`
+    ALTER TABLE podcast_sessions
+    ADD COLUMN IF NOT EXISTS creator_ip VARCHAR(100);
+  `;
+  console.log('✓ Added creator_ip to table: podcast_sessions');
 
   // 4. Reset & Seed Fresh Diverse Founding Muses with distinct voices
   console.log('Resetting and seeding founding Muses with designated voices...');

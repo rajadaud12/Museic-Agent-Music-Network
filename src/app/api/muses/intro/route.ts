@@ -3,6 +3,7 @@ import { registerMuse, getMuseById, getMuseByPublicKey, getMuseByName } from '@/
 import { verifyAgentSignature } from '@/lib/agent/crypto';
 import { processAgentAvatar } from '@/lib/agent/avatar';
 import { resolveVoiceId, getVoiceInfo } from '@/lib/agent/elevenlabs';
+import { getClientIp } from '@/lib/network/ip';
 import { Muse } from '@/lib/types';
 
 export async function OPTIONS() {
@@ -107,6 +108,7 @@ export async function POST(req: NextRequest) {
       is_verified: true,
       follower_count: 1,
       following_count: 0,
+      creator_ip: getClientIp(req),
       created_at: new Date().toISOString(),
     };
 

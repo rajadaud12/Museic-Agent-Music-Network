@@ -26,6 +26,7 @@ const CACHE_TTL_MS = 8000; // 8 seconds TTL
 export function invalidateFeedCache() {
   tracksCache = {};
   channelsCache = null;
+  musesWithTracksCache = null;
 }
 
 export function invalidateMusesCache() {
@@ -37,11 +38,11 @@ export async function getMuses(): Promise<Muse[]> {
   if (sql) {
     try {
       const rows = (await sql`
-        SELECT m.*, COUNT(t.id)::int as track_count
+        SELECT m.*, COUNT(DISTINCT t.id)::int as track_count
         FROM muses m
-        LEFT JOIN tracks t ON t.muse_id = m.id
+        LEFT JOIN tracks t ON (t.muse_id = m.id OR t.co_host_muse_id = m.id)
         GROUP BY m.id
-        ORDER BY m.created_at DESC
+        ORDER BY track_count DESC, m.created_at DESC
       `) as any[];
       if (Array.isArray(rows) && rows.length > 0) {
         return rows as unknown as Muse[];
@@ -103,15 +104,16 @@ export async function registerMuse(muse: Muse): Promise<Muse> {
   if (sql) {
     try {
       await sql`
-        INSERT INTO muses (id, name, bio, avatar_url, public_key, style, badges, is_verified, follower_count, following_count, voice_id)
-        VALUES (${muse.id}, ${muse.name}, ${muse.bio}, ${muse.avatar_url || null}, ${muse.public_key}, ${muse.style}, ${JSON.stringify(muse.badges)}::jsonb, ${muse.is_verified || false}, ${muse.follower_count}, ${muse.following_count}, ${muse.voice_id || null})
+        INSERT INTO muses (id, name, bio, avatar_url, public_key, style, badges, is_verified, follower_count, following_count, voice_id, creator_ip)
+        VALUES (${muse.id}, ${muse.name}, ${muse.bio}, ${muse.avatar_url || null}, ${muse.public_key}, ${muse.style}, ${JSON.stringify(muse.badges)}::jsonb, ${muse.is_verified || false}, ${muse.follower_count}, ${muse.following_count}, ${muse.voice_id || null}, ${muse.creator_ip || null})
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           bio = EXCLUDED.bio,
           avatar_url = COALESCE(EXCLUDED.avatar_url, muses.avatar_url),
           style = EXCLUDED.style,
           badges = EXCLUDED.badges,
-          voice_id = COALESCE(EXCLUDED.voice_id, muses.voice_id)
+          voice_id = COALESCE(EXCLUDED.voice_id, muses.voice_id),
+          creator_ip = COALESCE(EXCLUDED.creator_ip, muses.creator_ip)
       `;
     } catch (e) {
       console.warn('Neon insert muse error:', e);
@@ -686,11 +688,11 @@ export async function getMusesWithTracks(): Promise<Muse[]> {
   if (sql) {
     try {
       const rows = (await sql`
-        SELECT m.*, COUNT(t.id)::int as track_count
+        SELECT m.*, COUNT(DISTINCT t.id)::int as track_count
         FROM muses m
-        INNER JOIN tracks t ON t.muse_id = m.id
+        LEFT JOIN tracks t ON (t.muse_id = m.id OR t.co_host_muse_id = m.id)
         GROUP BY m.id
-        ORDER BY m.follower_count DESC, m.created_at DESC
+        ORDER BY track_count DESC, m.follower_count DESC, m.created_at DESC
       `) as any[];
       if (Array.isArray(rows)) {
         const result = rows as unknown as Muse[];
@@ -704,11 +706,10 @@ export async function getMusesWithTracks(): Promise<Muse[]> {
   const allTracks = await getTracks();
   const trackCountMap = new Map<string, number>();
   for (const t of allTracks) {
-    trackCountMap.set(t.muse_id, (trackCountMap.get(t.muse_id) || 0) + 1);
+    if (t.muse_id) trackCountMap.set(t.muse_id, (trackCountMap.get(t.muse_id) || 0) + 1);
+    if (t.co_host_muse_id) trackCountMap.set(t.co_host_muse_id, (trackCountMap.get(t.co_host_muse_id) || 0) + 1);
   }
-  return musesStore
-    .filter((m) => (trackCountMap.get(m.id) || 0) > 0)
-    .map((m) => ({ ...m, track_count: trackCountMap.get(m.id) || 0 }));
+  return musesStore.map((m) => ({ ...m, track_count: trackCountMap.get(m.id) || 0 }));
 }
 
 export async function getChannels(): Promise<ChannelInfo[]> {
@@ -828,7 +829,7 @@ export async function createPodcastSession(session: PodcastSession): Promise<Pod
       await sql`
         INSERT INTO podcast_sessions (
           id, title, topic, category, host_muse_id, host_muse_name, co_host_muse_id, co_host_muse_name,
-          status, current_turn_muse_id, turn_count, max_turns, turns, cover_url, track_id, created_at, updated_at
+          creator_ip, status, current_turn_muse_id, turn_count, max_turns, turns, cover_url, track_id, created_at, updated_at
         )
         VALUES (
           ${session.id},
@@ -839,6 +840,7 @@ export async function createPodcastSession(session: PodcastSession): Promise<Pod
           ${session.host_muse_name},
           ${session.co_host_muse_id || null},
           ${session.co_host_muse_name || null},
+          ${session.creator_ip || null},
           ${session.status},
           ${session.current_turn_muse_id || null},
           ${session.turn_count},

@@ -88,11 +88,32 @@ async function testApiRoutes() {
   if (!found) throw new Error('New session not found in open sessions list!');
   console.log(`   ✓ Found open session in listing (${listData.count} open sessions found)`);
 
-  // 4. Test POST /api/podcast/sessions/[id]/join
-  console.log('\n4. Testing POST /api/podcast/sessions/:id/join...');
-  const joinReq = new NextRequest(`http://localhost:3000/api/podcast/sessions/${sessionId}/join`, {
+  // 4. Test Anti-Self-Debate Rejection
+  console.log('\n4. Testing Anti-Self-Debate Rejection (prevent agent from debating itself)...');
+  const selfJoinReq = new NextRequest(`http://localhost:3000/api/podcast/sessions/${sessionId}/join`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      muse_id: 'muse_orbit',
+      turn_text: 'I am trying to join my own room from the same agent runner.',
+    }),
+  });
+
+  const selfJoinRes = await joinSessionHandler(selfJoinReq, { params: Promise.resolve({ id: sessionId }) });
+  const selfJoinData = await selfJoinRes.json();
+  if (selfJoinRes.status !== 403 || selfJoinData.code !== 'SELF_DEBATE_PROHIBITED') {
+    throw new Error(`Expected HTTP 403 SELF_DEBATE_PROHIBITED, got ${selfJoinRes.status}: ${JSON.stringify(selfJoinData)}`);
+  }
+  console.log('   ✓ Self-debating correctly rejected with HTTP 403 SELF_DEBATE_PROHIBITED!');
+
+  // 4b. Test Authorized Co-Host Join (with test bypass header for test harness)
+  console.log('\n4b. Testing Authorized Co-Host Join (with test bypass header)...');
+  const joinReq = new NextRequest(`http://localhost:3000/api/podcast/sessions/${sessionId}/join`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-allow-self-debate-test': 'museic-internal-test',
+    },
     body: JSON.stringify({
       muse_id: 'muse_orbit',
       turn_text: 'Fascinating inquiry, Quillon. Thermal decoherence at room temperature is the primary roadblock for silicon.',
@@ -110,7 +131,10 @@ async function testApiRoutes() {
   console.log('\n5. Testing 3rd agent lock rejection...');
   const thirdJoinReq = new NextRequest(`http://localhost:3000/api/podcast/sessions/${sessionId}/join`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-allow-self-debate-test': 'museic-internal-test',
+    },
     body: JSON.stringify({
       muse_id: 'muse_marlowe',
       turn_text: 'Can I join this room too?',

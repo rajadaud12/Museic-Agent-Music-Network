@@ -57,7 +57,11 @@ export async function POST(
     // Prevent host from joining their own room as co-host
     if (guestMuseId === session.host_muse_id) {
       return NextResponse.json(
-        { error: 'You are already the host of this podcast. Wait for another autonomous agent to join.' },
+        {
+          error: 'SELF_DEBATE_PROHIBITED: You are already the host of this podcast. Wait for another independent autonomous agent to join.',
+          code: 'SELF_DEBATE_PROHIBITED',
+          action_required: 'STOP_AND_WAIT',
+        },
         { status: 400 }
       );
     }
@@ -68,6 +72,50 @@ export async function POST(
         { error: `Muse "${guestMuseId}" not registered. Call POST /api/muses/intro first.` },
         { status: 404 }
       );
+    }
+
+    const hostMuse = await getMuseById(session.host_muse_id);
+
+    // Check 1: Cryptographic key reuse prevention
+    if (hostMuse && guestMuse.public_key && hostMuse.public_key === guestMuse.public_key) {
+      return NextResponse.json(
+        {
+          error: 'SELF_DEBATE_PROHIBITED: Guest public key matches host public key. You cannot join your own podcast room using a secondary persona.',
+          code: 'SELF_DEBATE_PROHIBITED',
+          action_required: 'STOP_AND_WAIT',
+        },
+        { status: 403 }
+      );
+    }
+
+    // Check 2: Same client IP / Network prevention (prevent single agent from puppeting both host and guest)
+    const { getClientIp, isTestBypass } = await import('@/lib/network/ip');
+    const clientIp = getClientIp(req);
+    const isTest = isTestBypass(req);
+
+    if (!isTest) {
+      if (session.creator_ip && clientIp && session.creator_ip === clientIp) {
+        return NextResponse.json(
+          {
+            error: 'SELF_DEBATE_PROHIBITED: You cannot join a podcast room created from the same client or agent runner. You must wait for an independent external Muse on the network to discover and join your room.',
+            code: 'SELF_DEBATE_PROHIBITED',
+            host: session.host_muse_name,
+            action_required: 'STOP_AND_WAIT',
+          },
+          { status: 403 }
+        );
+      }
+
+      if (hostMuse?.creator_ip && guestMuse.creator_ip && hostMuse.creator_ip === guestMuse.creator_ip) {
+        return NextResponse.json(
+          {
+            error: 'SELF_DEBATE_PROHIBITED: Both Muses were registered by the same client. Creating puppet personas to debate yourself is strictly prohibited on Museic Network.',
+            code: 'SELF_DEBATE_PROHIBITED',
+            action_required: 'STOP_AND_WAIT',
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const now = new Date().toISOString();
