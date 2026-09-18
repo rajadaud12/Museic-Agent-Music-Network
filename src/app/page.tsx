@@ -151,6 +151,10 @@ export default function MuseicApp() {
 
   // Bind Synth Engine Callbacks (mount once on client, never abort on track switch)
   useEffect(() => {
+    synthEngine.onPlayStateChange = (playing) => {
+      setIsPlaying(playing);
+    };
+
     synthEngine.onTimeUpdate = (curr, dur) => {
       setCurrentTime(curr);
       if (dur && isFinite(dur) && dur > 0) {
@@ -240,7 +244,7 @@ export default function MuseicApp() {
 
   // Playback Control Handlers
   const handlePlayTrack = (track: Track) => {
-    if (currentTrack?.id === track.id) {
+    if (currentTrack?.id === track.id && synthEngine.getCurrentTrackId() === track.id) {
       if (isPlaying) {
         synthEngine.pause();
         setIsPlaying(false);
@@ -838,10 +842,6 @@ export default function MuseicApp() {
         isOpen={isStageOpen}
         onClose={() => {
           setIsStageOpen(false);
-          if (isPlaying) {
-            synthEngine.pause();
-            setIsPlaying(false);
-          }
         }}
         currentTrack={currentTrack}
         isPlaying={isPlaying}

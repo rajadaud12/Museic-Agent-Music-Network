@@ -104,11 +104,8 @@ export default function PodcastBottomStage({
 
   const activeSpeaker = getActiveSpeaker(currentTrack, displayTime, effectiveDuration);
 
-  // Closing the bottom stage pauses the podcast immediately
-  const handleCloseAndPause = () => {
-    if (isPlaying) {
-      onPlayPause();
-    }
+  // Minimize the bottom stage to the bottom player bar (audio continues playing)
+  const handleMinimize = () => {
     onClose();
   };
 
@@ -223,9 +220,9 @@ export default function PodcastBottomStage({
 
   return (
     <>
-      {/* Backdrop overlay — clicking pauses and closes */}
+      {/* Backdrop overlay — clicking minimizes the drawer */}
       <div
-        onClick={handleCloseAndPause}
+        onClick={handleMinimize}
         className={`fixed inset-0 bg-black/70 backdrop-blur-md z-40 transition-opacity duration-500 ease-out ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
@@ -242,14 +239,14 @@ export default function PodcastBottomStage({
           {/* Centered Grab Pill */}
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 rounded-full bg-[#4E3C69]" />
 
-          {/* Left: Close & Pause Button */}
+          {/* Left: Minimize Button */}
           <button
-            onClick={handleCloseAndPause}
+            onClick={handleMinimize}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#211B2C] hover:bg-[#31293D] border border-[#382D4F] text-xs text-[#EFEAF9] hover:text-white transition-all cursor-pointer shadow-sm"
-            title="Close & Pause Podcast"
+            title="Minimize to bottom player bar"
           >
             <ChevronDown className="w-4 h-4 text-[#A08DFF]" />
-            <span className="font-medium">Close &amp; Pause</span>
+            <span className="font-medium">Minimize</span>
           </button>
 
           {/* Center: Mascot Logo (on/off) & Stage Status */}
@@ -298,9 +295,9 @@ export default function PodcastBottomStage({
             </button>
 
             <button
-              onClick={handleCloseAndPause}
+              onClick={handleMinimize}
               className="p-1.5 rounded-xl bg-[#211B2C] hover:bg-[#31293D] border border-[#382D4F] text-[#9B8EB8] hover:text-white transition-colors cursor-pointer"
-              title="Close"
+              title="Minimize"
             >
               <X className="w-4 h-4" />
             </button>

@@ -24,6 +24,7 @@ class SynthAudioEngine {
 
   public onTimeUpdate: ((currentSec: number, durationSec: number) => void) | null = null;
   public onTrackEnded: (() => void) | null = null;
+  public onPlayStateChange: ((isPlaying: boolean) => void) | null = null;
 
   private initContext() {
     if (typeof window === 'undefined') return;
@@ -46,6 +47,22 @@ class SynthAudioEngine {
       this.htmlAudio = new Audio();
       this.htmlAudio.preload = 'auto';
       this.htmlAudio.playbackRate = this.currentPlaybackRate;
+
+      this.htmlAudio.onplay = () => {
+        this.isPlaying = true;
+        if (this.onPlayStateChange) {
+          this.onPlayStateChange(true);
+        }
+      };
+
+      this.htmlAudio.onpause = () => {
+        if (!this.isSeeking) {
+          this.isPlaying = false;
+          if (this.onPlayStateChange) {
+            this.onPlayStateChange(false);
+          }
+        }
+      };
 
       this.htmlAudio.onloadedmetadata = () => {
         if (this.htmlAudio && isFinite(this.htmlAudio.duration) && this.htmlAudio.duration > 0) {
@@ -113,14 +130,22 @@ class SynthAudioEngine {
       this.htmlAudio.onended = () => {
         this.isPlaying = false;
         this.currentElapsed = 0;
+        if (this.onPlayStateChange) {
+          this.onPlayStateChange(false);
+        }
         if (this.onTrackEnded) {
           this.onTrackEnded();
         }
       };
 
-      this.htmlAudio.onerror = (e) => {
-        console.warn('HTML Audio error event, falling back to ambient synthesis:', e);
-        if (this.isPlaying && this.currentTrackId) {
+      this.htmlAudio.onerror = () => {
+        const err = this.htmlAudio?.error;
+        // Ignore code 1 (MEDIA_ERR_ABORTED), standard on source switch / stop
+        if (err && err.code === 1) {
+          return;
+        }
+        console.warn('HTML Audio error event:', err ? `code ${err.code}: ${err.message}` : 'unknown error');
+        if (this.isPlaying && this.currentTrackId && (!this.currentAudioUrl || !this.currentAudioUrl.startsWith('http'))) {
           this.startProceduralSynth('ambient', this.currentDuration);
         }
       };
@@ -197,11 +222,20 @@ class SynthAudioEngine {
         }
 
         // Only re-assign src if it's different to prevent redundant re-buffering
-        if (audio.src !== audioUrl && !audio.src.endsWith(audioUrl)) {
+        const isDifferentSource = audio.src !== audioUrl && !audio.src.endsWith(audioUrl);
+        if (isDifferentSource) {
           audio.src = audioUrl;
+          audio.load();
+        } else {
+          try {
+            audio.currentTime = 0;
+          } catch (e) {}
         }
-        audio.currentTime = 0;
         audio.playbackRate = this.currentPlaybackRate;
+
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
 
         const playPromise = audio.play();
         if (playPromise !== undefined) {
@@ -212,8 +246,10 @@ class SynthAudioEngine {
         if (err?.name === 'AbortError' || sessionId !== this.currentSessionId) {
           return;
         }
-        console.warn('HTML Audio playback error, falling back to synth:', err?.message || err);
-        this.startProceduralSynth(style || 'ambient', Math.min(180, duration));
+        console.warn('HTML Audio playback error:', err?.message || err);
+        if (err?.name !== 'NotAllowedError') {
+          this.startProceduralSynth(style || 'ambient', Math.min(180, duration));
+        }
         return;
       }
     }
@@ -224,7 +260,7 @@ class SynthAudioEngine {
 
   public async resume() {
     this.isPlaying = true;
-    if (this.htmlAudio && this.htmlAudio.src) {
+    if (this.htmlAudio && this.htmlAudio.src && !this.htmlAudio.src.endsWith('/')) {
       try {
         if (this.ctx && this.ctx.state === 'suspended') {
           await this.ctx.resume().catch(() => {});
@@ -236,6 +272,8 @@ class SynthAudioEngine {
           console.warn('Resume error on HTML Audio:', err);
         }
       }
+    } else if (this.currentTrackId && this.currentAudioUrl) {
+      await this.play(this.currentTrackId, this.currentAudioUrl, undefined, this.currentDuration);
     } else if (this.currentTrackId) {
       this.startProceduralSynth('ambient', this.currentDuration);
     }

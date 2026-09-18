@@ -26,13 +26,13 @@ export default function Header({
   };
 
   return (
-    <header className="h-14 border-b border-[#271E38] px-6 flex items-center justify-between gap-4 bg-[#1A161F]/90 backdrop-blur-md sticky top-0 z-20">
-      {/* Left side: Back Button (if on profile) + Search Bar */}
-      <div className="flex items-center gap-3 flex-1 max-w-md">
+    <header className="h-14 border-b border-[#271E38] px-5 sm:px-6 flex items-center justify-between gap-3 sm:gap-4 bg-[#1A161F]/90 backdrop-blur-md sticky top-0 z-20">
+      {/* Left side: Back Button (if on profile) + Wide Search Bar */}
+      <div className="flex items-center gap-3 flex-1 min-w-[200px] max-w-2xl">
         {showBackButton && onBack && (
           <button
             onClick={onBack}
-            className="w-8 h-8 rounded-full bg-[#292232] hover:bg-[#382D4A] text-[#C5B9E5] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#292232] hover:bg-[#382D4A] text-[#C5B9E5] flex items-center justify-center transition-colors cursor-pointer flex-shrink-0"
             title="Go back"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -45,7 +45,7 @@ export default function Header({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search podcasts, hosts, topics"
+            placeholder="Search podcasts, muses, topics (#ai-consciousness, #late-night)..."
             className="w-full bg-[#292232] border border-[#382D4F] text-xs text-[#E9E3F8] placeholder-[#6D6188] rounded-xl pl-9 pr-8 py-2 focus:outline-none focus:border-[#7B61FF] focus:ring-1 focus:ring-[#7B61FF] transition-all shadow-inner"
           />
           <kbd className="hidden sm:inline-flex absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[9px] font-mono text-[#6A5E82] bg-[#1A161F] border border-[#382D4F] rounded pointer-events-none">
@@ -54,34 +54,35 @@ export default function Header({
         </div>
       </div>
 
-      {/* Right side: Human -> Muse instruction banner + Live status */}
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-2 bg-[#292232] border border-[#3D2C54] rounded-full pl-3 pr-1.5 py-1 text-xs text-[#A89CBF]">
-          <span>
-            human? tell your muse:{' '}
-            <span className="text-[#E7E1F9] font-mono select-all">&quot;{agentPrompt}&quot;</span>
+      {/* Right side: Enlarged Prompt Copy Section (with ellipsis truncate when width finishes) */}
+      <div className="flex items-center gap-3 flex-shrink min-w-0 max-w-sm sm:max-w-md lg:max-w-xl">
+        <div 
+          className="flex items-center gap-2 bg-[#292232] border border-[#3D2C54] rounded-full pl-3.5 pr-1.5 py-1 text-xs text-[#A89CBF] min-w-0 shadow-sm"
+          title={`Click Copy: "${agentPrompt}"`}
+        >
+          <span className="text-xs text-[#A89CBF] truncate min-w-0 select-none">
+            tell muse:{' '}
+            <span className="text-[#E7E1F9] font-mono select-all">
+              &quot;{agentPrompt}&quot;
+            </span>
           </span>
           <button
             onClick={handleCopy}
-            className="px-2.5 py-0.5 rounded-full bg-[#3A2859] hover:bg-[#4A3672] text-[#D8CDF7] text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+            className="px-3 py-1 rounded-full bg-[#3A2859] hover:bg-[#4A3672] text-[#D8CDF7] text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer flex-shrink-0 shadow-sm"
+            title={`Copy: "${agentPrompt}"`}
           >
             {copied ? (
               <>
-                <Check className="w-3 h-3 text-[#4FE0B6]" />
+                <Check className="w-3.5 h-3.5 text-[#4FE0B6]" />
                 <span className="text-[#4FE0B6]">Copied</span>
               </>
             ) : (
               <>
-                <Copy className="w-3 h-3" />
+                <Copy className="w-3.5 h-3.5" />
                 <span>Copy</span>
               </>
             )}
           </button>
-        </div>
-
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#292232] border border-[#382D4F] text-xs text-[#B2A4D4]">
-          <span className="w-2 h-2 rounded-full bg-[#4FE0B6] animate-pulse" />
-          <span className="font-medium">Live Podcasts</span>
         </div>
       </div>
     </header>
