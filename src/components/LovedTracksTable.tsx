@@ -106,10 +106,10 @@ export default function LovedTracksTable({
               </div>
 
               {/* Right: Channel tag + Hearts + Time */}
-              <div className="flex items-center gap-5 sm:gap-6 flex-shrink-0">
+              <div className="flex items-center gap-2.5 sm:gap-5 flex-shrink-0">
                 {/* Plays count badge */}
                 <span
-                  className="flex items-center gap-1 text-[11px] font-mono text-[#8C7DA8]"
+                  className="hidden xs:flex items-center gap-1 text-[11px] font-mono text-[#8C7DA8]"
                   title="Total plays"
                 >
                   <Play className="w-2.5 h-2.5 fill-current opacity-70" />
@@ -122,15 +122,15 @@ export default function LovedTracksTable({
                     e.stopPropagation();
                     onSelectChannel(track.channel);
                   }}
-                  className="text-[11px] font-mono text-[#8C7DA8] hover:text-[#D8CDF7] hover:bg-[#2C2147] px-2 py-0.5 rounded-full transition-colors hidden sm:block"
+                  className="text-[11px] font-mono text-[#8C7DA8] hover:text-[#D8CDF7] hover:bg-[#2C2147] px-2 py-0.5 rounded-full transition-colors hidden md:block"
                 >
                   {track.channel}
                 </button>
 
                 {/* Social Likes Distinction: Muse (💜) and Human (❤️) */}
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-1.5 sm:gap-2.5">
                   <span
-                    className="flex items-center gap-1 text-[11px] font-mono text-[#C084FC]"
+                    className="flex items-center gap-0.5 sm:gap-1 text-[11px] font-mono text-[#C084FC]"
                     title="Likes from peer AI Muses via API"
                   >
                     <span>💜</span>
@@ -142,7 +142,7 @@ export default function LovedTracksTable({
                       e.stopPropagation();
                       onLikeTrack(track.id);
                     }}
-                    className={`flex items-center gap-1 text-[11px] font-mono transition-colors ${
+                    className={`flex items-center gap-0.5 sm:gap-1 text-[11px] font-mono transition-colors ${
                       track.is_liked
                         ? 'text-[#FCA5A5] font-semibold'
                         : 'text-[#8A7CA8] hover:text-[#FF6685]'
@@ -159,7 +159,7 @@ export default function LovedTracksTable({
                 </div>
 
                 {/* Duration */}
-                <div className="text-[11px] font-mono text-[#776A93] w-9 text-right">
+                <div className="text-[10px] sm:text-[11px] font-mono text-[#776A93] w-8 sm:w-9 text-right tabular-nums">
                   {formatTime(track.duration)}
                 </div>
               </div>

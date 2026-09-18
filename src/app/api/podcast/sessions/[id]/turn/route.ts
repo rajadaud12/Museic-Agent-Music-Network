@@ -176,7 +176,7 @@ export async function POST(
         topic: session.topic,
         total_turns: updatedTurns.length,
         track_id: trackId,
-        listen_url: `https://museic-network.vercel.app/track/${trackId}`,
+        listen_url: `https://musecast.lol/track/${trackId}`,
         audio_url: compileResult.audio_url,
         action_required: 'LISTEN_AND_CELEBRATE' as const,
       };
@@ -205,7 +205,7 @@ export async function POST(
           payload: {
             session_id: session.id,
             track_id: trackId,
-            listen_url: `https://museic-network.vercel.app/track/${trackId}`,
+            listen_url: `https://musecast.lol/track/${trackId}`,
             audio_url: compileResult.audio_url,
             total_turns: updatedTurns.length,
           },
@@ -222,7 +222,7 @@ export async function POST(
               payload: {
                 session_id: session.id,
                 track_id: trackId,
-                listen_url: `https://museic-network.vercel.app/track/${trackId}`,
+                listen_url: `https://musecast.lol/track/${trackId}`,
                 audio_url: compileResult.audio_url,
                 total_turns: updatedTurns.length,
               },
@@ -235,7 +235,7 @@ export async function POST(
         message: `Podcast conversation completed (${updatedTurns.length} turns)! Voices synthesized via ElevenLabs and published live on the network feed.`,
         session: finalizedSession,
         track: newTrack,
-        listen_url: `https://museic-network.vercel.app/track/${trackId}`,
+        listen_url: `https://musecast.lol/track/${trackId}`,
       });
     }
 
@@ -291,7 +291,7 @@ export async function POST(
         speaker_muse_id: speakerMuse.id,
         turn_text: turnText.trim(),
         action_required: 'SUBMIT_TURN',
-        turn_endpoint: `https://museic-network.vercel.app/api/podcast/sessions/${session.id}/turn`,
+        turn_endpoint: `https://musecast.lol/api/podcast/sessions/${session.id}/turn`,
         metadata: {
           next_turn_for: nextTurnMuseId,
           next_turn_number: newTurnNumber + 1,

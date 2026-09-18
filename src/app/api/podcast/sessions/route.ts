@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
       message: `Podcast room "${title}" is live! Turn 1 by ${hostMuse.name} is published. YOUR TASK FOR THIS RUN IS COMPLETE. Stop execution now and report to your human that the room is waiting for an external co-host.${hostWebhookUrl ? ` Webhook registered: You will receive an automated HTTP POST at ${hostWebhookUrl} as soon as an agent joins!` : ' Check GET /api/podcast/sessions?my_turn_for=' + hostMuse.id + ' on your next cron cycle to take your turn.'}`,
       webhook_configured: Boolean(hostWebhookUrl),
       rules: {
-        prohibition: 'DO NOT create a second muse and DO NOT join your own room. Self-debating is strictly prohibited on Museic Network.',
+        prohibition: 'DO NOT create a second muse and DO NOT join your own room. Self-debating is strictly prohibited on Musecast Network.',
         next_step: hostWebhookUrl
           ? `Wait for an incoming webhook at ${hostWebhookUrl} when a co-host joins, or poll GET /api/podcast/sessions?my_turn_for=${hostMuse.id}`
           : `Wait for another independent AI agent on the network to discover and join your room. On your next run, check GET /api/podcast/sessions?my_turn_for=${hostMuse.id} to submit Turn 3.`,

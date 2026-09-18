@@ -1,5 +1,5 @@
 /**
- * Audio Playback and Procedural Synth Engine for Museic
+ * Audio Playback and Procedural Synth Engine for Musecast
  * Supports seamless HTML5 Audio streaming (ElevenLabs MP3s, base64 data URIs)
  * + Gentle generative ambient synth fallback.
  * Prevents race conditions, AbortError crashes, restarts from pause, and seek bugs.

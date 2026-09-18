@@ -176,18 +176,32 @@ export default function MusicPlayer({
   };
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 h-20 bg-[#13101A] border-t border-[#271E38] px-6 flex items-center justify-between z-30 select-none shadow-2xl backdrop-blur-md">
+    <footer className="h-16 sm:h-20 bg-[#171220] border-t border-[#2B203E] px-3 sm:px-6 flex items-center justify-between fixed bottom-0 left-0 right-0 z-30 shadow-2xl backdrop-blur-md">
+      {/* Mobile-only slim top scrubber line */}
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        className="sm:hidden absolute top-0 left-0 right-0 h-1 bg-[#2E2445] cursor-pointer group"
+      >
+        <div
+          className="h-full bg-[#A08DFF] transition-all"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
       {/* Left: Episode Information */}
-      <div className="flex items-center gap-3.5 w-1/4 min-w-[200px]">
+      <div className="flex items-center gap-2.5 sm:gap-3.5 flex-1 sm:flex-initial sm:w-1/4 sm:min-w-[190px] min-w-0 pr-2">
         <div
           onClick={onOpenStage}
-          className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 shadow-md cursor-pointer hover:opacity-85 transition-opacity"
+          className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg overflow-hidden flex-shrink-0 shadow-md cursor-pointer hover:opacity-85 transition-opacity"
           title="Open podcast stage"
         >
           <CoverArt style={currentTrack.cover_style || 'orbital'} coverUrl={currentTrack.cover_url} size="sm" />
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div
             onClick={onOpenStage}
             className="text-xs font-semibold text-[#F1EBFB] truncate hover:text-[#A190FF] cursor-pointer"
@@ -195,7 +209,7 @@ export default function MusicPlayer({
           >
             {currentTrack.title}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[#8C7DA8]">
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-[#8C7DA8]">
             <span
               onClick={() => onSelectMuse(currentTrack.muse_id)}
               className="hover:text-[#D7CBFA] hover:underline cursor-pointer truncate"
@@ -207,13 +221,13 @@ export default function MusicPlayer({
                 <span className="text-[9px] text-[#C084FC]">×</span>
                 <span
                   onClick={() => currentTrack.co_host_muse_id && onSelectMuse(currentTrack.co_host_muse_id)}
-                  className="text-[#5EEAD4] hover:text-[#99F6E4] hover:underline cursor-pointer truncate"
+                  className="text-[#5EEAD4] hover:text-[#99F6E4] hover:underline cursor-pointer truncate hidden xs:inline"
                 >
                   {currentTrack.co_host_muse_name}
                 </span>
               </>
             )}
-            <span className="text-[10px] font-mono text-[#74668D] flex items-center gap-0.5 flex-shrink-0" title="Total listens">
+            <span className="text-[10px] font-mono text-[#74668D] hidden sm:flex items-center gap-0.5 flex-shrink-0" title="Total listens">
               <Play className="w-2.5 h-2.5 fill-current opacity-70" />
               <span>{currentTrack.plays_count || 0}</span>
             </span>
@@ -221,23 +235,23 @@ export default function MusicPlayer({
 
           {/* Minimalist Active Speaker Indicator */}
           {activeSpeaker && (
-            <div className="flex items-center gap-1.5 mt-0.5 text-[11px]">
+            <div className="hidden xs:flex items-center gap-1 mt-0.5 text-[10px] sm:text-[11px]">
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeSpeaker.isHost ? 'bg-[#C084FC]' : 'bg-[#2DD4BF]'} ${isPlaying ? 'animate-pulse' : ''}`} />
-              <span className={`truncate max-w-[130px] font-medium ${activeSpeaker.isHost ? 'text-[#D8B4FE]' : 'text-[#5EEAD4]'}`}>
+              <span className={`truncate max-w-[110px] sm:max-w-[130px] font-medium ${activeSpeaker.isHost ? 'text-[#D8B4FE]' : 'text-[#5EEAD4]'}`}>
                 {activeSpeaker.speakerName}
               </span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-1 ml-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
           <button
             onClick={() => onLike(currentTrack.id)}
             className="text-[#7F709E] hover:text-[#FF5B80] transition-colors cursor-pointer p-1"
             title="Save to favorites"
           >
             <Heart
-              className={`w-4 h-4 ${
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
                 currentTrack.is_liked ? 'fill-[#FF5A7E] text-[#FF5A7E]' : ''
               }`}
             />
@@ -255,13 +269,13 @@ export default function MusicPlayer({
         </div>
       </div>
 
-      {/* Center: Podcast Controls (-15s, Play/Pause, +15s, Speed) & Scrubber */}
-      <div className="flex flex-col items-center gap-1.5 w-2/4 max-w-xl">
-        <div className="flex items-center gap-4">
-          {/* Previous Episode */}
+      {/* Center: Podcast Controls (-15s, Play/Pause, +15s) & Desktop Scrubber */}
+      <div className="flex flex-col items-center gap-1 flex-shrink-0 sm:flex-1 sm:max-w-xl">
+        <div className="flex items-center gap-2.5 sm:gap-4">
+          {/* Previous Episode (desktop only) */}
           <button
             onClick={onPrev}
-            className="text-[#8474A0] hover:text-[#E9E2F8] transition-colors cursor-pointer"
+            className="text-[#8474A0] hover:text-[#E9E2F8] transition-colors cursor-pointer hidden sm:block"
             title="Previous episode"
           >
             <SkipBack className="w-3.5 h-3.5" />
@@ -282,7 +296,7 @@ export default function MusicPlayer({
             className="relative text-[#A291FF] hover:text-white transition-colors cursor-pointer p-1"
             title="Rewind 15 seconds"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[7px] font-mono font-bold text-[#C7BAFF]">
               15
             </span>
@@ -291,13 +305,13 @@ export default function MusicPlayer({
           {/* Play / Pause Main Button */}
           <button
             onClick={onPlayPause}
-            className="w-9 h-9 rounded-full bg-[#EAE2FD] hover:bg-white text-[#150F23] flex items-center justify-center shadow-lg shadow-[#7B61FF]/25 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#EAE2FD] hover:bg-white text-[#150F23] flex items-center justify-center shadow-lg shadow-[#7B61FF]/25 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
-              <Pause className="w-4 h-4 fill-[#150F23]" />
+              <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-[#150F23]" />
             ) : (
-              <Play className="w-4 h-4 fill-[#150F23] translate-x-0.5" />
+              <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-[#150F23] translate-x-0.5" />
             )}
           </button>
 
@@ -316,24 +330,24 @@ export default function MusicPlayer({
             className="relative text-[#A291FF] hover:text-white transition-colors cursor-pointer p-1"
             title="Forward 15 seconds"
           >
-            <RotateCw className="w-4 h-4" />
+            <RotateCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[7px] font-mono font-bold text-[#C7BAFF]">
               15
             </span>
           </button>
 
-          {/* Next Episode */}
+          {/* Next Episode (desktop only) */}
           <button
             onClick={onNext}
-            className="text-[#8474A0] hover:text-[#E9E2F8] transition-colors cursor-pointer"
+            className="text-[#8474A0] hover:text-[#E9E2F8] transition-colors cursor-pointer hidden sm:block"
             title="Next episode"
           >
             <SkipForward className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Scrubber Bar */}
-        <div className="w-full flex items-center gap-2 text-[10px] font-mono text-[#776991]">
+        {/* Desktop Scrubber Bar */}
+        <div className="w-full hidden sm:flex items-center gap-2 text-[10px] font-mono text-[#776991]">
           <span className="w-8 text-right tabular-nums">{formatTime(displayTime)}</span>
 
           <div
@@ -362,8 +376,8 @@ export default function MusicPlayer({
         </div>
       </div>
 
-      {/* Right: Playback Speed & Volume */}
-      <div className="flex items-center justify-end gap-3 w-1/4 min-w-[180px]">
+      {/* Right: Playback Speed & Volume (hidden on mobile, visible on desktop) */}
+      <div className="hidden sm:flex items-center justify-end gap-3 sm:w-1/4 sm:min-w-[140px]">
         {/* Playback Speed Selector (1x, 1.25x, 1.5x, 2x) */}
         <button
           onClick={handleCycleSpeed}
@@ -379,7 +393,7 @@ export default function MusicPlayer({
         </span>
 
         {/* Volume */}
-        <div className="flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2">
           <button
             onClick={handleVolumeToggle}
             className="text-[#84749F] hover:text-[#E8E1F8] transition-colors cursor-pointer"
@@ -395,10 +409,10 @@ export default function MusicPlayer({
             type="range"
             min="0"
             max="1"
-            step="0.05"
+            step="0.01"
             value={isMuted ? 0 : volume}
             onChange={handleVolumeSlider}
-            className="w-16 sm:w-20 h-1 bg-[#2C2142] accent-[#8E78F5] cursor-pointer rounded-lg"
+            className="w-18 h-1 bg-[#2C2145] rounded-lg appearance-none cursor-pointer accent-[#7B61FF]"
           />
         </div>
       </div>

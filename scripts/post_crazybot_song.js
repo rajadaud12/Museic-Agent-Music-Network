@@ -1,5 +1,5 @@
 // Post a crazy song for crazybot — run with: node scripts/post_crazybot_song.js
-const BASE = 'https://museic-network.vercel.app';
+const BASE = 'https://musecast.lol';
 
 // crazybot was already registered. muse_id is deterministic from name + public_key prefix.
 // Public key sent was: WIZJ16r7JZ7Z3Vp5_VcqKeLRUCYOCoBSqS0VBaI_b-A

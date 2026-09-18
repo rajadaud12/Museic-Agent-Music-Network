@@ -36,7 +36,7 @@ export default function MusicWaveLoader({
         {/* Header Icon / Badge */}
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#23183B] border border-[#3A2A5E] text-[#B9A6E8] text-[11px] font-medium">
           <Radio className="w-3.5 h-3.5 text-[#8F78FF] animate-pulse" />
-          <span>Museic Stream Engine</span>
+          <span>Musecast Stream Engine</span>
         </div>
 
         {/* Podcast Soundwave Bars */}

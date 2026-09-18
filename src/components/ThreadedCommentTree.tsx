@@ -204,13 +204,13 @@ function ThreadedCommentNode({
   return (
     <div className={`relative ${depth > 0 ? 'mt-2.5' : ''}`}>
       {/* Main Comment Box */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-[#292232] border border-[#382D4F] hover:border-[#523C75] transition-all space-y-2 shadow-sm">
+      <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#292232] border border-[#382D4F] hover:border-[#523C75] transition-all space-y-2 shadow-sm">
         {/* Header: Avatar, Author, OP Badge, Relative Time */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 min-w-0">
             {/* Avatar with deterministic gradient */}
             <div
-              className={`w-7 h-7 rounded-full bg-gradient-to-tr ${getAvatarGradient(
+              className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr ${getAvatarGradient(
                 comment.author_name
               )} flex items-center justify-center text-white text-xs font-bold shadow-sm flex-shrink-0`}
             >
@@ -228,7 +228,7 @@ function ThreadedCommentNode({
 
             {/* OP Badge (Blue pill from Reddit screenshot) */}
             {isOp && (
-              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-[#3B82F6]/25 text-[#60A5FA] border border-[#3B82F6]/50 tracking-wider leading-none shadow-sm">
+              <span className="text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-[#3B82F6]/25 text-[#60A5FA] border border-[#3B82F6]/50 tracking-wider leading-none shadow-sm">
                 OP
               </span>
             )}
@@ -241,10 +241,10 @@ function ThreadedCommentNode({
               </span>
             )}
 
-            <span className="text-[#8475A1] text-xs select-none">•</span>
+            <span className="text-[#8475A1] text-xs select-none hidden xs:inline">•</span>
 
             {/* Relative Timestamp (e.g. 2d ago) */}
-            <span className="text-[11px] text-[#9B8EB8] font-mono whitespace-nowrap">
+            <span className="text-[10px] sm:text-[11px] text-[#9B8EB8] font-mono whitespace-nowrap">
               {formatRelativeTime(comment.created_at)}
             </span>
           </div>
@@ -252,7 +252,7 @@ function ThreadedCommentNode({
           {/* Thread Collapse Button ⊖ */}
           <button
             onClick={() => setIsCollapsed(true)}
-            className="text-[#9B8EB8] hover:text-[#EFEAF9] hover:bg-[#382D4F]/50 p-1 rounded-lg transition-colors cursor-pointer"
+            className="text-[#9B8EB8] hover:text-[#EFEAF9] hover:bg-[#382D4F]/50 p-1 rounded-lg transition-colors cursor-pointer flex-shrink-0"
             title="Collapse thread"
           >
             <MinusCircle className="w-4 h-4" />
@@ -260,12 +260,12 @@ function ThreadedCommentNode({
         </div>
 
         {/* Comment Body */}
-        <p className="text-xs sm:text-[13px] text-[#EFEAF9] font-light leading-relaxed pl-9 whitespace-pre-wrap select-text">
+        <p className="text-xs sm:text-[13px] text-[#EFEAF9] font-light leading-relaxed pl-1 sm:pl-9 whitespace-pre-wrap select-text">
           {comment.content}
         </p>
 
         {/* Reddit Action Bar: [⊖] [▲ score ▼] (Agent Voting Only) — NO extra options */}
-        <div className="flex items-center gap-2 pl-9 pt-0.5 text-xs">
+        <div className="flex items-center gap-2 pl-1 sm:pl-9 pt-0.5 text-xs">
           {/* Collapse icon at start of action row */}
           <button
             onClick={() => setIsCollapsed(true)}

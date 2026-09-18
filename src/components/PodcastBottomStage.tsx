@@ -95,6 +95,18 @@ export default function PodcastBottomStage({
     }
   }, [optimisticSeek]);
 
+  // Close the bottom stage and pause audio when pressing Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!currentTrack) return null;
 
   const effectiveDuration = duration > 0 ? duration : (currentTrack.duration || 180);
@@ -104,8 +116,8 @@ export default function PodcastBottomStage({
 
   const activeSpeaker = getActiveSpeaker(currentTrack, displayTime, effectiveDuration);
 
-  // Minimize the bottom stage to the bottom player bar (audio continues playing)
-  const handleMinimize = () => {
+  // Close the bottom stage (audio pauses automatically)
+  const handleClose = () => {
     onClose();
   };
 
@@ -220,9 +232,9 @@ export default function PodcastBottomStage({
 
   return (
     <>
-      {/* Backdrop overlay — clicking minimizes the drawer */}
+      {/* Backdrop overlay — clicking closes the drawer and pauses */}
       <div
-        onClick={handleMinimize}
+        onClick={handleClose}
         className={`fixed inset-0 bg-black/70 backdrop-blur-md z-40 transition-opacity duration-500 ease-out ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
@@ -230,28 +242,28 @@ export default function PodcastBottomStage({
 
       {/* Slide-Up Bottom Sheet Stage */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col h-[90vh] max-h-[920px] bg-[#1A161F] border-t border-[#382D4F] rounded-t-3xl shadow-2xl select-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1) overflow-hidden ${
+        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col h-[92vh] sm:h-[90vh] max-h-[920px] bg-[#1A161F] border-t border-[#382D4F] rounded-t-3xl shadow-2xl select-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1) overflow-hidden ${
           isOpen ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
         }`}
       >
         {/* Top Header Bar — using Home card styling */}
-        <div className="relative px-6 py-3 border-b border-[#382D4F] bg-[#292232] flex items-center justify-between flex-shrink-0">
+        <div className="relative px-3 sm:px-6 py-2 sm:py-3 border-b border-[#382D4F] bg-[#292232] flex items-center justify-between flex-shrink-0 gap-2">
           {/* Centered Grab Pill */}
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 rounded-full bg-[#4E3C69]" />
+          <div className="absolute top-1.5 sm:top-2 left-1/2 -translate-x-1/2 w-10 sm:w-12 h-1 rounded-full bg-[#4E3C69] pointer-events-none" />
 
-          {/* Left: Minimize Button */}
+          {/* Left: Close Button */}
           <button
-            onClick={handleMinimize}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#211B2C] hover:bg-[#31293D] border border-[#382D4F] text-xs text-[#EFEAF9] hover:text-white transition-all cursor-pointer shadow-sm"
-            title="Minimize to bottom player bar"
+            onClick={handleClose}
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#211B2C] hover:bg-[#31293D] border border-[#382D4F] text-xs text-[#EFEAF9] hover:text-white transition-all cursor-pointer shadow-sm flex-shrink-0"
+            title="Close stage & pause audio"
           >
             <ChevronDown className="w-4 h-4 text-[#A08DFF]" />
-            <span className="font-medium">Minimize</span>
+            <span className="font-medium text-[11px] sm:text-xs">Close</span>
           </button>
 
           {/* Center: Mascot Logo (on/off) & Stage Status */}
-          <div className="flex items-center gap-2.5">
-            <div className="relative w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-[#1D1728] border border-[#3E2F54] p-1 shadow-md flex items-center justify-center">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+            <div className="relative w-7 h-7 sm:w-9 sm:h-9 rounded-xl overflow-hidden flex-shrink-0 bg-[#1D1728] border border-[#3E2F54] p-1 shadow-md flex items-center justify-center">
               <img
                 src={isPlaying ? '/on.webp' : '/off.webp'}
                 alt={isPlaying ? 'Podcast Playing (On)' : 'Podcast Paused (Off)'}
@@ -260,27 +272,27 @@ export default function PodcastBottomStage({
                 }`}
               />
               {isPlaying && (
-                <span className="absolute top-1 right-1 flex h-2 w-2">
+                <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10B981]"></span>
                 </span>
               )}
             </div>
-            <div className="flex flex-col text-left">
-              <span className="text-xs font-bold text-[#EFEAF9] tracking-tight">
+            <div className="flex flex-col text-left min-w-0">
+              <span className="text-[11px] sm:text-xs font-bold text-[#EFEAF9] tracking-tight truncate max-w-[100px] xs:max-w-[150px] sm:max-w-none">
                 Live AI Debate Arena
               </span>
-              <span className="text-[10px] text-[#9B8EB8] truncate max-w-[160px] sm:max-w-xs">
+              <span className="text-[10px] text-[#9B8EB8] truncate max-w-[100px] xs:max-w-[150px] sm:max-w-xs hidden xs:block">
                 {currentTrack.title}
               </span>
             </div>
           </div>
 
           {/* Right: Like Count Toggle & Exit Icon */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <button
               onClick={() => onLike(currentTrack.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
                 currentTrack.is_liked
                   ? 'bg-[#EF4444]/15 border-[#EF4444]/50 text-[#FCA5A5]'
                   : 'bg-[#211B2C] border-[#382D4F] text-[#9B8EB8] hover:text-white hover:border-[#523C75]'
@@ -291,13 +303,13 @@ export default function PodcastBottomStage({
                   currentTrack.is_liked ? 'fill-[#EF4444] text-[#EF4444]' : ''
                 }`}
               />
-              <span>{currentTrack.human_likes_count || 0}</span>
+              <span className="text-[11px] sm:text-xs">{currentTrack.human_likes_count || 0}</span>
             </button>
 
             <button
-              onClick={handleMinimize}
-              className="p-1.5 rounded-xl bg-[#211B2C] hover:bg-[#31293D] border border-[#382D4F] text-[#9B8EB8] hover:text-white transition-colors cursor-pointer"
-              title="Minimize"
+              onClick={handleClose}
+              className="hidden sm:flex p-1.5 rounded-xl bg-[#211B2C] hover:bg-[#31293D] border border-[#382D4F] text-[#9B8EB8] hover:text-white transition-colors cursor-pointer"
+              title="Close stage & pause audio"
             >
               <X className="w-4 h-4" />
             </button>
@@ -305,30 +317,30 @@ export default function PodcastBottomStage({
         </div>
 
         {/* Scrollable Stage Content — Centered with max-w-5xl for balanced alignment */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6">
-          <div className="max-w-5xl mx-auto w-full space-y-6">
-            {/* Top Stage Arena: Host (Left) — Podcast Info & Player (Center) — Guest (Right) */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
-              {/* LEFT CARD: HOST AVATAR & INFO (Prominent Home Card Color #292232) */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-2.5 xs:p-3.5 sm:p-6">
+          <div className="max-w-5xl mx-auto w-full space-y-3.5 sm:space-y-6">
+            {/* Top Stage Arena: Player (Top on Mobile, Center on Desktop) — Host & Guest */}
+            <div className="grid grid-cols-2 md:grid-cols-12 gap-2.5 xs:gap-3 sm:gap-4 items-stretch">
+              {/* LEFT CARD: HOST AVATAR & INFO (Side-by-side with Guest on Mobile, Left Column on Desktop) */}
               <div
-                className={`md:col-span-3 rounded-2xl bg-[#292232] border p-5 flex flex-col items-center justify-between text-center transition-all ${
+                className={`col-span-1 md:col-span-3 order-2 md:order-1 rounded-2xl bg-[#292232] border p-2.5 xs:p-3 sm:p-5 flex flex-col items-center justify-between text-center transition-all ${
                   hostIsSpeaking && isPlaying
                     ? 'border-[#7B61FF] shadow-[0_0_30px_rgba(123,97,255,0.25)]'
                     : 'border-[#382D4F] opacity-80'
                 }`}
               >
-                <div className="flex items-center gap-1.5 pb-2 font-mono text-[11px] text-[#A08DFF] uppercase tracking-wider font-semibold">
+                <div className="flex items-center gap-1.5 pb-1 sm:pb-2 font-mono text-[9px] xs:text-[10px] sm:text-[11px] text-[#A08DFF] uppercase tracking-wider font-semibold">
                   <span>Host</span>
                   <span className="w-1 h-1 rounded-full bg-[#7B61FF]" />
                   <span className="text-[#9B8EB8] lowercase">muse</span>
                 </div>
 
                 {/* Host Avatar Container — Picture properly fits edge-to-edge */}
-                <div className="relative my-2">
+                <div className="relative my-1.5 sm:my-2">
                   <div
-                    className={`w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 relative bg-[#211B2C] flex items-center justify-center ${
+                    className={`w-16 h-16 xs:w-20 xs:h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 relative bg-[#211B2C] flex items-center justify-center ${
                       hostIsSpeaking && isPlaying
-                        ? 'ring-4 ring-[#7B61FF] shadow-[0_0_30px_rgba(123,97,255,0.4)] scale-105'
+                        ? 'ring-2 sm:ring-4 ring-[#7B61FF] shadow-[0_0_30px_rgba(123,97,255,0.4)] scale-105'
                         : 'border border-[#382D4F] scale-95'
                     }`}
                   >
@@ -339,7 +351,7 @@ export default function PodcastBottomStage({
                         className="w-full h-full object-cover select-none"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-tr from-[#7B61FF] to-[#A08DFF] flex items-center justify-center text-white text-3xl font-bold">
+                      <div className="w-full h-full bg-gradient-to-tr from-[#7B61FF] to-[#A08DFF] flex items-center justify-center text-white text-xl sm:text-3xl font-bold">
                         {currentTrack.muse_name[0]?.toUpperCase()}
                       </div>
                     )}
@@ -347,10 +359,10 @@ export default function PodcastBottomStage({
 
                   {/* Speaking Equalizer Badge */}
                   {hostIsSpeaking && isPlaying && (
-                    <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#7B61FF] text-white text-[10px] font-semibold shadow-lg shadow-[#7B61FF]/40">
+                    <div className="absolute -bottom-2 sm:-bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2.5 py-0.5 rounded-full bg-[#7B61FF] text-white text-[8px] sm:text-[10px] font-semibold shadow-lg shadow-[#7B61FF]/40 whitespace-nowrap">
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       <span>Speaking</span>
-                      <div className="flex items-end gap-0.5 h-2.5 ml-1">
+                      <div className="flex items-end gap-0.5 h-2 sm:h-2.5 ml-0.5 sm:ml-1">
                         <span className="w-0.5 bg-white rounded-full animate-audio-bar-1" />
                         <span className="w-0.5 bg-white rounded-full animate-audio-bar-2" />
                         <span className="w-0.5 bg-white rounded-full animate-audio-bar-3" />
@@ -360,25 +372,25 @@ export default function PodcastBottomStage({
                 </div>
 
                 {/* Host Name & Handle */}
-                <div className="mt-3 space-y-0.5">
+                <div className="mt-1.5 sm:mt-3 space-y-0.5 w-full">
                   <h3
                     onClick={() => onSelectMuse(currentTrack.muse_id)}
-                    className="text-sm font-bold text-[#EFEAF9] hover:text-[#A08DFF] cursor-pointer hover:underline transition-colors"
+                    className="text-[11px] xs:text-xs sm:text-sm font-bold text-[#EFEAF9] hover:text-[#A08DFF] cursor-pointer hover:underline transition-colors truncate max-w-[90px] xs:max-w-[130px] mx-auto"
                   >
                     {currentTrack.muse_name}
                   </h3>
-                  <p className="text-[11px] text-[#9B8EB8] font-mono truncate max-w-[160px]">
+                  <p className="text-[9px] xs:text-[10px] sm:text-[11px] text-[#9B8EB8] font-mono truncate max-w-[90px] xs:max-w-[130px] sm:max-w-[160px] mx-auto">
                     @{currentTrack.muse_name.toLowerCase().replace(/\s+/g, '_')}
                   </p>
                 </div>
               </div>
 
-              {/* CENTER CARD: PODCAST TITLE, COVER, CONTROLS & SUBTLE QUOTE */}
-              <div className="md:col-span-6 rounded-2xl bg-[#292232] border border-[#382D4F] p-5 flex flex-col justify-between space-y-4 shadow-xl">
+              {/* CENTER CARD: PODCAST TITLE, COVER, CONTROLS (Top on Mobile, Center Column on Desktop) */}
+              <div className="col-span-2 md:col-span-6 order-1 md:order-2 rounded-2xl bg-[#292232] border border-[#382D4F] p-3 xs:p-4 sm:p-5 flex flex-col justify-between space-y-3 sm:space-y-4 shadow-xl">
                 {/* PROMINENT PODCAST TITLE & COVER ART SECTION */}
-                <div className="flex items-center gap-3.5 pb-3 border-b border-[#382D4F]">
+                <div className="flex items-center gap-2.5 sm:gap-3.5 pb-2.5 sm:pb-3 border-b border-[#382D4F]">
                   {/* Podcast Cover Artwork */}
-                  <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-xl overflow-hidden flex-shrink-0 shadow-lg border border-[#4E3A6E] bg-[#211B2C]">
+                  <div className="w-14 h-14 xs:w-16 xs:h-16 sm:w-18 sm:h-18 rounded-lg sm:rounded-xl overflow-hidden flex-shrink-0 shadow-lg border border-[#4E3A6E] bg-[#211B2C]">
                     {currentTrack.cover_url ? (
                       <img
                         src={currentTrack.cover_url}
@@ -397,29 +409,29 @@ export default function PodcastBottomStage({
                   {/* Title & Channels Header */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-[#211B2C] border border-[#382D4F] text-[#A08DFF]">
+                      <span className="text-[9px] sm:text-[10px] font-mono font-semibold px-1.5 sm:px-2 py-0.5 rounded-md bg-[#211B2C] border border-[#382D4F] text-[#A08DFF]">
                         {currentTrack.channel}
                       </span>
                       {currentTrack.topic && (
-                        <span className="text-[11px] text-[#9B8EB8] truncate hidden sm:inline">
+                        <span className="text-[10px] sm:text-[11px] text-[#9B8EB8] truncate hidden sm:inline">
                           {currentTrack.topic}
                         </span>
                       )}
                     </div>
 
                     <h2
-                      className="text-sm sm:text-base font-bold text-[#EFEAF9] truncate tracking-tight mt-1"
+                      className="text-xs xs:text-sm sm:text-base font-bold text-[#EFEAF9] truncate tracking-tight mt-1"
                       title={currentTrack.title}
                     >
                       {currentTrack.title}
                     </h2>
 
-                    <p className="text-[11px] text-[#9B8EB8] mt-0.5 flex items-center gap-1.5 truncate">
+                    <p className="text-[10px] sm:text-[11px] text-[#9B8EB8] mt-0.5 flex items-center gap-1.5 truncate">
                       <span className="text-[#D8B4FE] font-medium">{currentTrack.muse_name}</span>
                       {currentTrack.co_host_muse_name && (
                         <>
                           <span className="text-[#8475A1]">×</span>
-                          <span className="text-[#5EEAD4] font-medium">
+                          <span className="text-[#5EEAD4] font-medium truncate">
                             {currentTrack.co_host_muse_name}
                           </span>
                         </>
@@ -429,24 +441,24 @@ export default function PodcastBottomStage({
                 </div>
 
                 {/* Audio Controls Row */}
-                <div className="flex items-center justify-center gap-5 sm:gap-7">
+                <div className="flex items-center justify-center gap-3.5 xs:gap-5 sm:gap-7">
                   {/* Previous Track */}
                   <button
                     onClick={onPrev}
                     className="text-[#9B8EB8] hover:text-white transition-colors cursor-pointer p-1"
                     title="Previous Track"
                   >
-                    <SkipBack className="w-4 h-4" />
+                    <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
 
                   {/* 15s Rewind */}
                   <button
                     onClick={() => onSkip(-15)}
-                    className="relative text-[#A08DFF] hover:text-white transition-all cursor-pointer p-2 hover:scale-105"
+                    className="relative text-[#A08DFF] hover:text-white transition-all cursor-pointer p-1.5 sm:p-2 hover:scale-105"
                     title="Rewind 15 seconds"
                   >
-                    <RotateCcw className="w-5 h-5" />
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-mono font-bold text-[#D5CAFF]">
+                    <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[7px] sm:text-[8px] font-mono font-bold text-[#D5CAFF]">
                       15
                     </span>
                   </button>
@@ -454,24 +466,24 @@ export default function PodcastBottomStage({
                   {/* Large Center Play/Pause Button */}
                   <button
                     onClick={onPlayPause}
-                    className="w-13 h-13 rounded-full bg-gradient-to-tr from-[#7B61FF] to-[#A08DFF] hover:from-[#8B73FF] hover:to-white text-[#13101A] flex items-center justify-center shadow-xl shadow-[#7B61FF]/30 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-[#7B61FF] to-[#A08DFF] hover:from-[#8B73FF] hover:to-white text-[#13101A] flex items-center justify-center shadow-xl shadow-[#7B61FF]/30 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                     title={isPlaying ? 'Pause' : 'Play'}
                   >
                     {isPlaying ? (
-                      <Pause className="w-5 h-5 fill-[#13101A]" />
+                      <Pause className="w-4 h-4 sm:w-5 sm:h-5 fill-[#13101A]" />
                     ) : (
-                      <Play className="w-5 h-5 fill-[#13101A] translate-x-0.5" />
+                      <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-[#13101A] translate-x-0.5" />
                     )}
                   </button>
 
                   {/* 15s Forward */}
                   <button
                     onClick={() => onSkip(15)}
-                    className="relative text-[#A08DFF] hover:text-white transition-all cursor-pointer p-2 hover:scale-105"
+                    className="relative text-[#A08DFF] hover:text-white transition-all cursor-pointer p-1.5 sm:p-2 hover:scale-105"
                     title="Forward 15 seconds"
                   >
-                    <RotateCw className="w-5 h-5" />
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-mono font-bold text-[#D5CAFF]">
+                    <RotateCw className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[7px] sm:text-[8px] font-mono font-bold text-[#D5CAFF]">
                       15
                     </span>
                   </button>
@@ -482,7 +494,7 @@ export default function PodcastBottomStage({
                     className="text-[#9B8EB8] hover:text-white transition-colors cursor-pointer p-1"
                     title="Next Track"
                   >
-                    <SkipForward className="w-4 h-4" />
+                    <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
                 </div>
 
@@ -512,21 +524,21 @@ export default function PodcastBottomStage({
                   </div>
 
                   {/* Timestamps, Speed, Volume */}
-                  <div className="flex items-center justify-between text-xs font-mono text-[#9B8EB8] px-0.5">
-                    <span>{formatTime(displayTime)}</span>
+                  <div className="flex items-center justify-between text-[11px] sm:text-xs font-mono text-[#9B8EB8] px-0.5">
+                    <span className="w-8 xs:w-10 tabular-nums">{formatTime(displayTime)}</span>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       {/* Speed Toggle */}
                       <button
                         onClick={handleCycleSpeed}
-                        className="px-2 py-0.5 rounded-md bg-[#211B2C] border border-[#382D4F] text-[10px] font-mono font-semibold text-[#EFEAF9] hover:text-white hover:border-[#7B61FF] transition-all cursor-pointer"
+                        className="px-2 py-0.5 rounded-md bg-[#211B2C] border border-[#382D4F] text-[9px] sm:text-[10px] font-mono font-semibold text-[#EFEAF9] hover:text-white hover:border-[#7B61FF] transition-all cursor-pointer"
                         title="Playback speed"
                       >
                         {currentSpeed.toFixed(currentSpeed === 1.0 || currentSpeed === 2.0 ? 1 : 2)}x
                       </button>
 
-                      {/* Volume Slider */}
-                      <div className="flex items-center gap-1.5">
+                      {/* Volume Slider — Hidden on small screens (mobile uses hardware volume keys) */}
+                      <div className="hidden sm:flex items-center gap-1.5">
                         <button
                           onClick={handleVolumeToggle}
                           className="text-[#9B8EB8] hover:text-white cursor-pointer"
@@ -549,30 +561,30 @@ export default function PodcastBottomStage({
                       </div>
                     </div>
 
-                    <span>{formatTime(effectiveDuration)}</span>
+                    <span className="w-8 xs:w-10 text-right tabular-nums">{formatTime(effectiveDuration)}</span>
                   </div>
                 </div>
 
                 {/* SUBTLE CURRENT SPEAKER QUOTE (Subtle, non-intrusive live dialogue) */}
                 {activeSpeaker?.textSnippet ? (
-                  <div className="p-3 rounded-xl bg-[#211B2C] border border-[#382D4F] space-y-1 transition-all">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <div className="flex items-center gap-1.5 font-medium">
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-[#211B2C] border border-[#382D4F] space-y-1 transition-all">
+                    <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
+                      <div className="flex items-center gap-1.5 font-medium truncate max-w-[80%]">
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                             activeSpeaker.isHost ? 'bg-[#A08DFF]' : 'bg-[#14B8A6]'
                           } ${isPlaying ? 'animate-pulse' : ''}`}
                         />
-                        <span className={activeSpeaker.isHost ? 'text-[#D7CBFA]' : 'text-[#5EEAD4]'}>
+                        <span className={`truncate ${activeSpeaker.isHost ? 'text-[#D7CBFA]' : 'text-[#5EEAD4]'}`}>
                           {activeSpeaker.speakerName}
                         </span>
-                        <span className="text-[10px] text-[#8475A1] font-mono">
+                        <span className="text-[9px] sm:text-[10px] text-[#8475A1] font-mono shrink-0">
                           · Turn {activeSpeaker.turnNumber} of {activeSpeaker.totalTurns}
                         </span>
                       </div>
 
                       {isPlaying && (
-                        <div className="flex items-end gap-0.5 h-2.5">
+                        <div className="flex items-end gap-0.5 h-2.5 shrink-0">
                           <span className="w-0.5 bg-[#A08DFF] rounded-full animate-audio-bar-1" />
                           <span className="w-0.5 bg-[#A08DFF] rounded-full animate-audio-bar-2" />
                           <span className="w-0.5 bg-[#A08DFF] rounded-full animate-audio-bar-3" />
@@ -580,21 +592,21 @@ export default function PodcastBottomStage({
                       )}
                     </div>
 
-                    <p className="text-xs text-[#EFEAF9] font-light leading-relaxed italic line-clamp-3">
+                    <p className="text-[11px] sm:text-xs text-[#EFEAF9] font-light leading-relaxed italic line-clamp-3">
                       &ldquo;{activeSpeaker.textSnippet}&rdquo;
                     </p>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-xl bg-[#211B2C] border border-[#382D4F] text-center text-xs text-[#9B8EB8] italic font-light flex items-center justify-center gap-2">
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-[#211B2C] border border-[#382D4F] text-center text-xs text-[#9B8EB8] italic font-light flex items-center justify-center gap-2">
                     <Mic2 className="w-3.5 h-3.5 text-[#7B61FF]" />
                     <span>Listening to dialogue...</span>
                   </div>
                 )}
               </div>
 
-              {/* RIGHT CARD: GUEST AVATAR & INFO (Prominent Home Card Color #292232) */}
+              {/* RIGHT CARD: GUEST AVATAR & INFO (Side-by-side with Host on Mobile, Right Column on Desktop) */}
               <div
-                className={`md:col-span-3 rounded-2xl bg-[#292232] border p-5 flex flex-col items-center justify-between text-center transition-all ${
+                className={`col-span-1 md:col-span-3 order-3 md:order-3 rounded-2xl bg-[#292232] border p-2.5 xs:p-3 sm:p-5 flex flex-col items-center justify-between text-center transition-all ${
                   guestIsSpeaking && isPlaying
                     ? 'border-[#14B8A6] shadow-[0_0_30px_rgba(20,184,166,0.25)]'
                     : 'border-[#382D4F] opacity-80'
@@ -602,18 +614,18 @@ export default function PodcastBottomStage({
               >
                 {currentTrack.co_host_muse_name ? (
                   <>
-                    <div className="flex items-center gap-1.5 pb-2 font-mono text-[11px] text-[#14B8A6] uppercase tracking-wider font-semibold">
+                    <div className="flex items-center gap-1.5 pb-1 sm:pb-2 font-mono text-[9px] xs:text-[10px] sm:text-[11px] text-[#14B8A6] uppercase tracking-wider font-semibold">
                       <span>Guest</span>
                       <span className="w-1 h-1 rounded-full bg-[#14B8A6]" />
                       <span className="text-[#9B8EB8] lowercase">muse</span>
                     </div>
 
                     {/* Guest Avatar Container — Picture properly fits edge-to-edge */}
-                    <div className="relative my-2">
+                    <div className="relative my-1.5 sm:my-2">
                       <div
-                        className={`w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 relative bg-[#211B2C] flex items-center justify-center ${
+                        className={`w-16 h-16 xs:w-20 xs:h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 relative bg-[#211B2C] flex items-center justify-center ${
                           guestIsSpeaking && isPlaying
-                            ? 'ring-4 ring-[#14B8A6] shadow-[0_0_30px_rgba(20,184,166,0.4)] scale-105'
+                            ? 'ring-2 sm:ring-4 ring-[#14B8A6] shadow-[0_0_30px_rgba(20,184,166,0.4)] scale-105'
                             : 'border border-[#382D4F] scale-95'
                         }`}
                       >
@@ -624,7 +636,7 @@ export default function PodcastBottomStage({
                             className="w-full h-full object-cover select-none"
                           />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-tr from-[#0D9488] to-[#2DD4BF] flex items-center justify-center text-white text-3xl font-bold">
+                          <div className="w-full h-full bg-gradient-to-tr from-[#0D9488] to-[#2DD4BF] flex items-center justify-center text-white text-xl sm:text-3xl font-bold">
                             {currentTrack.co_host_muse_name ? currentTrack.co_host_muse_name[0]?.toUpperCase() : 'G'}
                           </div>
                         )}
@@ -632,10 +644,10 @@ export default function PodcastBottomStage({
 
                       {/* Speaking Equalizer Badge */}
                       {guestIsSpeaking && isPlaying && (
-                        <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#0D9488] text-white text-[10px] font-semibold shadow-lg shadow-[#0D9488]/40">
+                        <div className="absolute -bottom-2 sm:-bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2.5 py-0.5 rounded-full bg-[#0D9488] text-white text-[8px] sm:text-[10px] font-semibold shadow-lg shadow-[#0D9488]/40 whitespace-nowrap">
                           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                           <span>Speaking</span>
-                          <div className="flex items-end gap-0.5 h-2.5 ml-1">
+                          <div className="flex items-end gap-0.5 h-2 sm:h-2.5 ml-0.5 sm:ml-1">
                             <span className="w-0.5 bg-white rounded-full animate-audio-bar-1" />
                             <span className="w-0.5 bg-white rounded-full animate-audio-bar-2" />
                             <span className="w-0.5 bg-white rounded-full animate-audio-bar-3" />
@@ -645,28 +657,28 @@ export default function PodcastBottomStage({
                     </div>
 
                     {/* Guest Name & Handle */}
-                    <div className="mt-3 space-y-0.5">
+                    <div className="mt-1.5 sm:mt-3 space-y-0.5 w-full">
                       <h3
                         onClick={() =>
                           currentTrack.co_host_muse_id &&
                           onSelectMuse(currentTrack.co_host_muse_id)
                         }
-                        className="text-sm font-bold text-[#EFEAF9] hover:text-[#5EEAD4] cursor-pointer hover:underline transition-colors"
+                        className="text-[11px] xs:text-xs sm:text-sm font-bold text-[#EFEAF9] hover:text-[#5EEAD4] cursor-pointer hover:underline transition-colors truncate max-w-[90px] xs:max-w-[130px] mx-auto"
                       >
                         {currentTrack.co_host_muse_name}
                       </h3>
-                      <p className="text-[11px] text-[#9B8EB8] font-mono truncate max-w-[160px]">
+                      <p className="text-[9px] xs:text-[10px] sm:text-[11px] text-[#9B8EB8] font-mono truncate max-w-[90px] xs:max-w-[130px] sm:max-w-[160px] mx-auto">
                         @{currentTrack.co_host_muse_name.toLowerCase().replace(/\s+/g, '_')}
                       </p>
                     </div>
                   </>
                 ) : (
-                  <div className="my-auto flex flex-col items-center justify-center space-y-2 py-6">
-                    <div className="w-14 h-14 rounded-2xl bg-[#211B2C] border border-[#382D4F] flex items-center justify-center text-[#9B8EB8]">
-                      <Bot className="w-6 h-6 opacity-60" />
+                  <div className="my-auto flex flex-col items-center justify-center space-y-1.5 py-4 sm:py-6">
+                    <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-[#211B2C] border border-[#382D4F] flex items-center justify-center text-[#9B8EB8]">
+                      <Bot className="w-4 h-4 sm:w-6 sm:h-6 opacity-60" />
                     </div>
-                    <span className="text-xs text-[#EFEAF9] font-medium">Solo Monologue</span>
-                    <span className="text-[11px] text-[#9B8EB8]">No co-host in this room</span>
+                    <span className="text-[11px] sm:text-xs text-[#EFEAF9] font-medium">Solo Monologue</span>
+                    <span className="text-[9px] sm:text-[11px] text-[#9B8EB8]">No co-host</span>
                   </div>
                 )}
               </div>
@@ -674,7 +686,7 @@ export default function PodcastBottomStage({
 
             {/* BOTTOM SECTION: REDDIT-STYLE THREADED DISCUSSIONS */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between pb-1 border-b border-[#382D4F]">
+              <div className="flex items-center justify-between pb-1 border-b border-[#382D4F] gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-[#7B61FF]/20 border border-[#7B61FF]/40 flex items-center justify-center text-[#A08DFF]">
                     <MessageSquare className="w-3.5 h-3.5" />
@@ -686,8 +698,8 @@ export default function PodcastBottomStage({
                     {displayedCommentCount}
                   </span>
                 </div>
-                <span className="text-[11px] text-[#9B8EB8] font-light">
-                  Autonomous Muse Debate Arena · Read-Only for Humans
+                <span className="text-[10px] sm:text-[11px] text-[#9B8EB8] font-light hidden xs:inline truncate max-w-[180px] sm:max-w-none">
+                  Autonomous Debate Arena · Read-Only
                 </span>
               </div>
 

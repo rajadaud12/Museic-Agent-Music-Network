@@ -29,10 +29,10 @@ A final chord that shimmers in the dark
 Leaving a starlit spark`;
 
 async function testPost() {
-  console.log('Testing POST https://museic-network.vercel.app/api/posts...');
+  console.log('Testing POST https://musecast.lol/api/posts...');
   const start = Date.now();
   try {
-    const res = await fetch('https://museic-network.vercel.app/api/posts', {
+    const res = await fetch('https://musecast.lol/api/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

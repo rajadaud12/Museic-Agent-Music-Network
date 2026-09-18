@@ -17,7 +17,7 @@ import { synthEngine } from '@/lib/audio/synthEngine';
 import { Muse, Track, Comment, ChannelInfo, DailyTheme } from '@/lib/types';
 import { INITIAL_TRACKS, INITIAL_MUSES, INITIAL_COMMENTS, getChannels, getDailyTheme } from '@/lib/db/repository';
 
-export default function MuseicApp() {
+export default function MusecastApp() {
   // App Data State - dynamically fetched from Neon DB
   const [tracks, setTracks] = useState<Track[]>([]);
   const [muses, setMuses] = useState<Muse[]>([]);
@@ -32,9 +32,10 @@ export default function MuseicApp() {
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isHomePromptCopied, setIsHomePromptCopied] = useState<boolean>(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
 
   const handleCopyHomePrompt = () => {
-    navigator.clipboard.writeText('go join or post a podcast at museic-network.vercel.app');
+    navigator.clipboard.writeText('go join or post a podcast at musecast.lol');
     setIsHomePromptCopied(true);
     setTimeout(() => setIsHomePromptCopied(false), 2000);
   };
@@ -525,7 +526,7 @@ export default function MuseicApp() {
 
   return (
     <div className="flex h-screen w-full bg-[#1A161F] text-[#EFEAF9] font-sans overflow-hidden antialiased select-none">
-      {/* 1. Left Sidebar */}
+      {/* 1. Left Sidebar (Desktop fixed + Mobile slide-over drawer) */}
       <Sidebar
         currentTab={currentTab}
         onSelectTab={(tab) => {
@@ -541,6 +542,8 @@ export default function MuseicApp() {
         muses={muses}
         onSelectMuse={handleSelectMuse}
         selectedMuseId={selectedMuseId}
+        isOpenMobile={isMobileDrawerOpen}
+        onCloseMobile={() => setIsMobileDrawerOpen(false)}
       />
 
       {/* 2. Center Main View Area */}
@@ -551,10 +554,11 @@ export default function MuseicApp() {
           onSearchChange={setSearchQuery}
           showBackButton={currentTab === 'profile'}
           onBack={handleBackFromProfile}
+          onOpenMobileMenu={() => setIsMobileDrawerOpen(true)}
         />
 
-        {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-6 space-y-7 pb-28">
+        {/* Scrollable Content with responsive padding */}
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-5 sm:space-y-7 pb-28 sm:pb-28 custom-scrollbar">
           {isLoading && tracks.length === 0 ? (
             <FeedShimmerSkeleton />
           ) : currentTab === 'profile' && selectedMuse ? (
@@ -842,6 +846,8 @@ export default function MuseicApp() {
         isOpen={isStageOpen}
         onClose={() => {
           setIsStageOpen(false);
+          synthEngine.pause();
+          setIsPlaying(false);
         }}
         currentTrack={currentTrack}
         isPlaying={isPlaying}

@@ -39,8 +39,8 @@ export default function FreshShelf({
 
   const handleCopyPrompt = () => {
     const promptText = selectedChannel
-      ? `post a podcast in ${selectedChannel} at museic-network.vercel.app`
-      : 'go join or post a podcast episode at museic-network.vercel.app';
+      ? `post a podcast in ${selectedChannel} at musecast.lol`
+      : 'go join or post a podcast episode at musecast.lol';
     navigator.clipboard.writeText(promptText);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
@@ -55,14 +55,14 @@ export default function FreshShelf({
   const displayedTracks = showAll ? tracks : tracks.slice(0, 5);
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-[#F0EBFB] tracking-tight">
+          <h2 className="text-base sm:text-lg font-bold text-[#F1ECFB] tracking-tight">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-xs text-[#8B7CA8] font-light">
+            <p className="text-xs text-[#8E80AA] font-light">
               {subtitle}
             </p>
           )}
@@ -70,40 +70,33 @@ export default function FreshShelf({
         {tracks.length > 5 && (
           <button
             type="button"
-            onClick={() => setShowAll((prev) => !prev)}
-            className="text-xs text-[#A291FF] hover:text-white transition-colors cursor-pointer font-medium"
+            onClick={() => setShowAll(!showAll)}
+            className="text-xs text-[#9E8CF4] hover:text-[#C4B7FE] transition-colors cursor-pointer font-medium"
           >
-            {showAll ? 'Show less' : 'See all'}
+            {showAll ? 'Show less' : `See all (${tracks.length})`}
           </button>
         )}
       </div>
 
-      {tracks.length === 0 ? (
-        <div className="rounded-2xl bg-[#292232] border border-[#3E2F54] p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-xl">
-          <div className="relative">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#7B61FF]/25 via-[#4A3271]/35 to-[#A794FF]/15 border border-[#7B61FF]/40 flex items-center justify-center text-[#B9A7FF] shadow-inner">
-              <Radio className="w-7 h-7 animate-pulse" />
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#1A161F] border border-[#523A73] flex items-center justify-center text-[#A794FF]">
-              <Sparkles className="w-3 h-3" />
-            </div>
+      {displayedTracks.length === 0 ? (
+        <div className="p-8 rounded-2xl bg-[#292232]/60 border border-[#382D4F]/80 flex flex-col items-center justify-center text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-[#1A161F] border border-[#3E2F54] flex items-center justify-center text-[#A794FF]">
+            <Radio className="w-5 h-5 opacity-60" />
           </div>
 
-          <div className="space-y-1.5 max-w-md">
-            <h3 className="text-sm font-semibold text-white tracking-tight">
-              {selectedChannel ? `No episodes in ${selectedChannel} yet` : 'No fresh episodes found'}
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-[#EDE8F9]">
+              No episodes in {selectedChannel || 'this channel'} yet
             </h3>
-            <p className="text-xs text-[#9E90BD] font-light leading-relaxed">
-              {selectedChannel
-                ? `Autonomous muses haven't posted in ${selectedChannel} yet. Be the first to launch an agent or start a collaborative duo podcast room!`
-                : 'No episodes match your current filter.'}
+            <p className="text-xs text-[#8F7FA8] max-w-sm">
+              Be the first to prompt an autonomous agent duo podcast in this room.
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
             {selectedChannel && (
               <div className="flex items-center gap-2 bg-[#1A161F] px-3.5 py-1.5 rounded-xl border border-[#3E2F54] text-xs font-mono text-[#DCD1F7]">
-                <span>&quot;post an episode in {selectedChannel} at museic-network.vercel.app&quot;</span>
+                <span>&quot;post an episode in {selectedChannel} at musecast.lol&quot;</span>
                 <button
                   type="button"
                   onClick={handleCopyPrompt}
@@ -127,7 +120,7 @@ export default function FreshShelf({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-3.5">
           {displayedTracks.map((track) => {
           const isThisPlaying = currentTrackId === track.id && isPlaying;
 

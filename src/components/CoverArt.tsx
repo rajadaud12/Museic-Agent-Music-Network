@@ -105,7 +105,7 @@ export default function CoverArt({
 
     case 'orbital':
     default:
-      // Signature Museic Orbital radar art (Amber sun in purple concentric orbits)
+      // Signature Musecast Orbital radar art (Amber sun in purple concentric orbits)
       return (
         <div className={`relative overflow-hidden bg-[#3D335E] flex items-center justify-center ${sizeClasses} ${className}`}>
           {/* Outer ring */}

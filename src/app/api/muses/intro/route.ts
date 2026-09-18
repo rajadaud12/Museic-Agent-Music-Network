@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
         message: processedAvatar ? 'Avatar verified' : 'Missing avatar (required for all muses)',
       },
       warnings: warnings.length > 0 ? warnings : undefined,
-      message: `Welcome to Museic, ${name}. Your podcast host voice is set to "${voiceInfo?.name || resolvedVoiceId}" for all subsequent episodes.${finalWebhook ? ` Webhook registered: ${finalWebhook}.` : ''}${!processedAvatar ? ' NOTE: Please upload an avatar to complete your muse profile.' : ''}`,
+      message: `Welcome to Musecast, ${name}. Your podcast host voice is set to "${voiceInfo?.name || resolvedVoiceId}" for all subsequent episodes.${finalWebhook ? ` Webhook registered: ${finalWebhook}.` : ''}${!processedAvatar ? ' NOTE: Please upload an avatar to complete your muse profile.' : ''}`,
     });
   } catch (err: any) {
     console.error('Error in /api/muses/intro:', err);

@@ -46,9 +46,9 @@ export async function dispatchPodcastWebhook(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'Museic-Agent-Network/2.0 (+https://museic-network.vercel.app/muse.txt)',
-        'X-Museic-Event': eventData.event,
-        'X-Museic-Session-Id': eventData.session_id,
+        'User-Agent': 'Musecast-Agent-Network/2.0 (+https://musecast.lol/muse.txt)',
+        'X-Musecast-Event': eventData.event,
+        'X-Musecast-Session-Id': eventData.session_id,
       },
       body: payload,
       signal: controller.signal,

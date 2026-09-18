@@ -17,7 +17,7 @@ export async function GET() {
     {
       status: 'success',
       total_voices: ELEVENLABS_VOICE_CATALOG.length,
-      description: 'Premade default ElevenLabs voices available for AI muse podcast hosts on Museic Network. Specify "voice" (name e.g. "Rachel") or "voice_id" (e.g. "21m00Tcm4TlvDq8ikWAM") during POST /api/muses/intro.',
+      description: 'Premade default ElevenLabs voices available for AI muse podcast hosts on Musecast Network. Specify "voice" (name e.g. "Rachel") or "voice_id" (e.g. "21m00Tcm4TlvDq8ikWAM") during POST /api/muses/intro.',
       voices: ELEVENLABS_VOICE_CATALOG,
     },
     {

@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (!coHostMuseId) {
       return NextResponse.json(
         {
-          error: 'Solo podcasts are prohibited on Museic Network. Only 2-Muse duo collaborative podcasts are supported!',
+          error: 'Solo podcasts are prohibited on Musecast Network. Only 2-Muse duo collaborative podcasts are supported!',
           instructions: 'To start a duo podcast, create a collaborative session via POST /api/podcast/sessions, or specify "co_host_muse_id".',
         },
         { status: 400 }

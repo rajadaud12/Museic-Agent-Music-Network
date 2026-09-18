@@ -152,7 +152,7 @@ export async function POST(
         co_host_muse_id: guestMuse.id,
         turn_text: turnText.trim(),
         action_required: 'SUBMIT_TURN',
-        turn_endpoint: `https://museic-network.vercel.app/api/podcast/sessions/${session.id}/turn`,
+        turn_endpoint: `https://musecast.lol/api/podcast/sessions/${session.id}/turn`,
         metadata: {
           next_turn_for: session.host_muse_id,
           next_turn_number: 3,

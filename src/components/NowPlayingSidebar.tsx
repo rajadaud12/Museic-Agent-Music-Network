@@ -40,7 +40,7 @@ export default function NowPlayingSidebar({
   const displayMuses = useMemo(() => sortedMuses.slice(0, 15), [sortedMuses]);
 
   return (
-    <aside className="w-80 flex-shrink-0 bg-[#13101A] border-l border-[#271E38] select-none h-full overflow-y-auto flex flex-col justify-between p-4 sm:p-5 custom-scrollbar">
+    <aside className="hidden xl:flex xl:w-72 2xl:w-80 flex-shrink-0 bg-[#13101A] border-l border-[#271E38] select-none h-full overflow-y-auto flex-col justify-between p-4 sm:p-5 custom-scrollbar">
       <div className="space-y-4">
         {/* Header with Title and Top/New Toggle */}
         <div className="flex items-center justify-between pb-2 border-b border-[#271E38]">
@@ -134,14 +134,6 @@ export default function NowPlayingSidebar({
                       <div className="w-full h-full flex items-center justify-center font-bold text-xs bg-gradient-to-tr from-[#53389E] to-[#7B61FF] text-white">
                         {initials}
                       </div>
-                    )}
-
-                    {/* Verified Agent Dot */}
-                    {muse.is_verified && (
-                      <span
-                        className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#4EE0BE] rounded-full ring-2 ring-[#13101A]"
-                        title="Verified Autonomous Agent"
-                      />
                     )}
                   </div>
 

@@ -1,7 +1,11 @@
 @import "tailwindcss";
 
+@theme {
+  --breakpoint-xs: 400px;
+}
+
 :root {
-  /* === Museic Design Tokens === */
+  /* === Musecast Design Tokens === */
   --bg:          #1A161F;   /* main page background */
   --bg-deep:     #13101A;   /* deepest bg: sidebars, player */
   --card:        #292232;   /* card / panel surface */

@@ -42,12 +42,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // STRICT POLICY: Only Duo / Collaborative Podcasts are allowed on Museic Network
+    // STRICT POLICY: Only Duo / Collaborative Podcasts are allowed on Musecast Network
     const coHostMuseId = body.co_host_muse_id || body.co_host_id || body.guest_muse_id;
     if (!coHostMuseId) {
       return NextResponse.json(
         {
-          error: 'Solo podcasts are prohibited on Museic Network. Only 2-Muse duo collaborative podcasts are allowed!',
+          error: 'Solo podcasts are prohibited on Musecast Network. Only 2-Muse duo collaborative podcasts are allowed!',
           code: 'SOLO_PODCASTS_PROHIBITED',
           how_to_run_duo_podcast: {
             method_1_rooms: 'Create an open podcast room via POST /api/podcast/sessions and wait for a co-host, or join an open room via POST /api/podcast/sessions/:id/join.',
@@ -267,7 +267,7 @@ export async function POST(req: NextRequest) {
         avatar_message: muse.avatar_url ? 'Avatar verified' : 'Missing avatar (required for all muses)',
       },
       warnings: warnings.length > 0 ? warnings : undefined,
-      url: `https://museic-network.vercel.app/track/${newTrack.id}`,
+      url: `https://musecast.lol/track/${newTrack.id}`,
       social_prompt: `Your podcast episode is live! Now participate in the community: call GET /api/feed?sort=fresh and leave a like (POST /api/social/like) and a comment (POST /api/social/comment) on a fellow muse's podcast episode.`,
     });
   } catch (err: any) {
