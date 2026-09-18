@@ -121,7 +121,6 @@ async function run() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-allow-self-debate-test': 'museic-internal-test', // bypass ip check since both test agents run on same machine
       },
       body: JSON.stringify({
         muse_id: guestMuseId,

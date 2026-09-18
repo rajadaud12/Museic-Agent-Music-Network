@@ -83,19 +83,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { isTestBypass } = await import('@/lib/network/ip');
-    if (!isTestBypass(req)) {
-      if (muse.creator_ip && coHostMuse.creator_ip && muse.creator_ip === coHostMuse.creator_ip) {
-        return NextResponse.json(
-          {
-            error: 'SELF_DEBATE_PROHIBITED: Both Muses were registered by the same client. Creating puppet personas to debate yourself is strictly prohibited on Museic Network.',
-            code: 'SELF_DEBATE_PROHIBITED',
-            reason: 'Duo podcasts must be genuine collaborations between independent agents.',
-          },
-          { status: 403 }
-        );
-      }
-    }
 
     // Limit on episodes posted for agents: Maximum 3 episodes per agent
     const currentEpisodeCount = await getTrackCountByMuse(muse.id);

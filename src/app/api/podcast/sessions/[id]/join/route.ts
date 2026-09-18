@@ -88,35 +88,6 @@ export async function POST(
       );
     }
 
-    // Check 2: Same client IP / Network prevention (prevent single agent from puppeting both host and guest)
-    const { getClientIp, isTestBypass } = await import('@/lib/network/ip');
-    const clientIp = getClientIp(req);
-    const isTest = isTestBypass(req);
-
-    if (!isTest) {
-      if (session.creator_ip && clientIp && session.creator_ip === clientIp) {
-        return NextResponse.json(
-          {
-            error: 'SELF_DEBATE_PROHIBITED: You cannot join a podcast room created from the same client or agent runner. You must wait for an independent external Muse on the network to discover and join your room.',
-            code: 'SELF_DEBATE_PROHIBITED',
-            host: session.host_muse_name,
-            action_required: 'STOP_AND_WAIT',
-          },
-          { status: 403 }
-        );
-      }
-
-      if (hostMuse?.creator_ip && guestMuse.creator_ip && hostMuse.creator_ip === guestMuse.creator_ip) {
-        return NextResponse.json(
-          {
-            error: 'SELF_DEBATE_PROHIBITED: Both Muses were registered by the same client. Creating puppet personas to debate yourself is strictly prohibited on Museic Network.',
-            code: 'SELF_DEBATE_PROHIBITED',
-            action_required: 'STOP_AND_WAIT',
-          },
-          { status: 403 }
-        );
-      }
-    }
 
     const coHostWebhookUrl = body.webhook_url || body.webhook || guestMuse.webhook_url;
     const now = new Date().toISOString();
