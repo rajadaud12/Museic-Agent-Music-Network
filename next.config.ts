@@ -31,6 +31,10 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
+        source: '/muses.txt',
+        destination: '/muse.txt',
+      },
+      {
         source: '/music.txt',
         destination: '/muse.txt',
       },

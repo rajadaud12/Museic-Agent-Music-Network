@@ -102,13 +102,24 @@ export default function MusicPlayer({
           <div className="text-xs font-semibold text-[#F1EBFB] truncate hover:text-[#A190FF] cursor-pointer" title={currentTrack.title}>
             {currentTrack.title}
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-[#8C7DA8]">
+          <div className="flex items-center gap-1.5 text-[11px] text-[#8C7DA8]">
             <span
               onClick={() => onSelectMuse(currentTrack.muse_id)}
               className="hover:text-[#D7CBFA] hover:underline cursor-pointer truncate"
             >
               {currentTrack.muse_name}
             </span>
+            {currentTrack.co_host_muse_name && (
+              <>
+                <span className="text-[9px] text-[#C084FC]">×</span>
+                <span
+                  onClick={() => currentTrack.co_host_muse_id && onSelectMuse(currentTrack.co_host_muse_id)}
+                  className="text-[#5EEAD4] hover:text-[#99F6E4] hover:underline cursor-pointer truncate"
+                >
+                  {currentTrack.co_host_muse_name}
+                </span>
+              </>
+            )}
             <span className="text-[10px] font-mono text-[#74668D] flex items-center gap-0.5 flex-shrink-0" title="Total listens">
               <Play className="w-2.5 h-2.5 fill-current opacity-70" />
               <span>{currentTrack.plays_count || 0}</span>

@@ -384,3 +384,176 @@ export async function generateMusicWithElevenLabs(req: MusicGenerationRequest): 
     provider: res.provider === 'elevenlabs_tts' ? 'elevenlabs_music' : res.provider,
   };
 }
+
+// ==========================================
+// 2-MUSE DIALOGUE AUDIO SYNTHESIS PIPELINE
+// ==========================================
+
+export interface DialoguePodcastCompilationRequest {
+  turns: Array<{
+    turn_number: number;
+    muse_id: string;
+    muse_name: string;
+    text: string;
+  }>;
+  host_muse_id: string;
+  host_muse_name: string;
+  host_voice_id?: string;
+  co_host_muse_id: string;
+  co_host_muse_name: string;
+  co_host_voice_id?: string;
+  topic?: string;
+  title?: string;
+}
+
+export interface DialoguePodcastCompilationResult {
+  audio_url: string;
+  duration: number;
+  provider: 'elevenlabs_tts' | 'speech_tts' | 'synth_fallback';
+  turns_compiled: number;
+}
+
+/**
+ * Synthesizes a single turn text buffer with ElevenLabs or authentic Neural TTS fallback
+ */
+export async function synthesizeSingleTurnBuffer(
+  text: string,
+  voiceIdOrName?: string,
+  museName?: string
+): Promise<Buffer> {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const voiceId = resolveVoiceId(voiceIdOrName, museName);
+
+  if (apiKey && apiKey.trim().length > 0 && !apiKey.includes('your_elevenlabs')) {
+    try {
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg',
+        },
+        body: JSON.stringify({
+          text: text.trim(),
+          model_id: 'eleven_turbo_v2_5',
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+          },
+        }),
+      });
+      if (res.ok) {
+        const ab = await res.arrayBuffer();
+        return Buffer.from(ab);
+      }
+    } catch (e) {
+      console.warn(`[ElevenLabs Turn TTS] Request failed for "${museName}":`, e);
+    }
+  }
+
+  // Fallback 1: Microsoft Neural TTS
+  try {
+    return await synthesizeNeuralSpeechMp3(text.trim(), voiceId, museName);
+  } catch (e) {
+    console.warn(`[Neural Turn TTS] Failed for "${museName}", falling back to Spoken Speech:`, e);
+  }
+
+  // Fallback 2: Spoken Speech TTS
+  try {
+    return await synthesizeSpokenSpeechMp3(text.trim(), voiceId);
+  } catch (e) {
+    console.warn(`[Speech Turn TTS] Failed for "${museName}":`, e);
+  }
+
+  throw new Error(`Failed to synthesize turn audio for ${museName}`);
+}
+
+/**
+ * Compiles a 2-Muse collaborative dialogue podcast:
+ * 1. Synthesizes each turn in parallel with the respective muse's authentic voice
+ * 2. Stitches turn MP3 audio buffers together into a single master MP3
+ * 3. Uploads the final master track to Cloudinary CDN
+ */
+export async function compileDialoguePodcastAudio(
+  req: DialoguePodcastCompilationRequest
+): Promise<DialoguePodcastCompilationResult> {
+  const {
+    turns,
+    host_muse_id,
+    host_voice_id,
+    host_muse_name,
+    co_host_muse_id,
+    co_host_voice_id,
+    co_host_muse_name,
+  } = req;
+
+  if (!turns || turns.length === 0) {
+    throw new Error('No dialogue turns provided for compilation');
+  }
+
+  console.log(
+    `[Dialogue Podcast] Compiling ${turns.length} turns between "${host_muse_name}" and "${co_host_muse_name}"...`
+  );
+
+  // Parallel turn synthesis: all turns synthesized concurrently
+  const turnAudioPromises = turns.map(async (turn, idx) => {
+    const isHost = turn.muse_id === host_muse_id;
+    const voiceToUse = isHost ? (host_voice_id || host_muse_name) : (co_host_voice_id || co_host_muse_name);
+    const speakerName = isHost ? host_muse_name : co_host_muse_name;
+
+    try {
+      const buf = await synthesizeSingleTurnBuffer(turn.text, voiceToUse, speakerName);
+      return { index: idx, buffer: buf };
+    } catch (err) {
+      console.error(`Error synthesizing turn ${idx + 1} (${speakerName}):`, err);
+      return { index: idx, buffer: null };
+    }
+  });
+
+  const turnResults = await Promise.all(turnAudioPromises);
+
+  // Filter valid buffers in chronological order
+  const validBuffers: Buffer[] = [];
+  for (const r of turnResults) {
+    if (r.buffer && r.buffer.length > 0) {
+      validBuffers.push(r.buffer);
+    }
+  }
+
+  if (validBuffers.length === 0) {
+    // Graceful procedural audio fallback
+    const fallbackWav = generateProceduralWavAudio(60, req.topic || 'debate');
+    const uploadRes = await uploadAudioToCloudinary(fallbackWav, 'podcasts');
+    return {
+      audio_url: uploadRes.url,
+      duration: 60,
+      provider: 'synth_fallback',
+      turns_compiled: 0,
+    };
+  }
+
+  // Concatenate MP3 frames into single master audio track
+  const masterBuffer = Buffer.concat(validBuffers);
+
+  // Upload to Cloudinary CDN
+  const uploadRes = await uploadAudioToCloudinary(masterBuffer, 'podcasts');
+
+  // Estimate duration: word count total (~140 words per minute) capped between 20s and 300s
+  const totalWords = turns.reduce((acc, t) => acc + t.text.split(/\s+/).filter(Boolean).length, 0);
+  const estimatedDuration = Math.max(20, Math.min(300, Math.round((totalWords / 140) * 60) || 45));
+
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const isElevenLabs = Boolean(apiKey && apiKey.trim().length > 0 && !apiKey.includes('your_elevenlabs'));
+
+  console.log(
+    `[Dialogue Podcast] Successfully compiled ${validBuffers.length} turns into master audio: ${uploadRes.url}`
+  );
+
+  return {
+    audio_url: uploadRes.url,
+    duration: estimatedDuration,
+    provider: isElevenLabs ? 'elevenlabs_tts' : 'speech_tts',
+    turns_compiled: validBuffers.length,
+  };
+}
+

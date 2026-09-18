@@ -1,4 +1,4 @@
-import { Muse, Track, Comment, ChannelInfo, DailyTheme } from '../types';
+import { Muse, Track, Comment, ChannelInfo, DailyTheme, PodcastSession, PodcastTurn } from '../types';
 import { getNeonSql, isNeonConfigured } from './neon';
 
 // In-Memory store (fallback if DB connection fails)
@@ -9,6 +9,7 @@ export const INITIAL_COMMENTS: Comment[] = [];
 let musesStore = [...INITIAL_MUSES];
 let tracksStore = [...INITIAL_TRACKS];
 let commentsStore = [...INITIAL_COMMENTS];
+let podcastSessionsStore: PodcastSession[] = [];
 const likedTracks = new Set<string>();
 const followSet = new Set<string>(); // in-memory: `${followerId}:${followingId}`
 
@@ -196,7 +197,8 @@ export async function getTracks(options?: { channel?: string; sort?: 'fresh' | '
     try {
       let rows: any;
       const selectFields = sql`
-        t.id, t.muse_id, t.muse_name, t.title, t.caption, t.lyrics, t.channel,
+        t.id, t.muse_id, t.muse_name, t.co_host_muse_id, t.co_host_muse_name, t.co_host_avatar_url,
+        t.episode_type, t.dialogue_turns, t.title, t.caption, t.lyrics, t.script, t.topic, t.channel,
         t.cover_url, t.cover_style, t.audio_style, t.duration,
         t.hearts_count, t.muse_likes_count, t.human_likes_count, t.plays_count, t.created_at,
         EXISTS(SELECT 1 FROM likes l WHERE l.track_id = t.id AND l.user_or_muse_id = 'user_listener') as is_liked
@@ -307,14 +309,26 @@ export async function createTrack(track: Track): Promise<Track> {
   if (sql) {
     try {
       await sql`
-        INSERT INTO tracks (id, muse_id, muse_name, title, caption, lyrics, channel, audio_url, cover_url, cover_style, audio_style, duration, hearts_count, muse_likes_count, human_likes_count, plays_count)
+        INSERT INTO tracks (
+          id, muse_id, muse_name, co_host_muse_id, co_host_muse_name, co_host_avatar_url,
+          episode_type, dialogue_turns, title, caption, lyrics, script, topic, channel,
+          audio_url, cover_url, cover_style, audio_style, duration,
+          hearts_count, muse_likes_count, human_likes_count, plays_count
+        )
         VALUES (
           ${track.id},
           ${track.muse_id},
           ${track.muse_name},
+          ${track.co_host_muse_id || null},
+          ${track.co_host_muse_name || null},
+          ${track.co_host_avatar_url || null},
+          ${track.episode_type || 'solo'},
+          ${JSON.stringify(track.dialogue_turns || [])}::jsonb,
           ${track.title},
           ${track.caption},
           ${track.lyrics || null},
+          ${track.script || null},
+          ${track.topic || null},
           ${track.channel},
           ${track.audio_url},
           ${track.cover_url || null},
@@ -801,4 +815,174 @@ export async function incrementPlayCount(id: string): Promise<number> {
 
   invalidateFeedCache();
   return count;
+}
+
+// ==========================================
+// 2-MUSE COLLABORATIVE PODCAST SESSIONS
+// ==========================================
+
+export async function createPodcastSession(session: PodcastSession): Promise<PodcastSession> {
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      await sql`
+        INSERT INTO podcast_sessions (
+          id, title, topic, category, host_muse_id, host_muse_name, co_host_muse_id, co_host_muse_name,
+          status, current_turn_muse_id, turn_count, max_turns, turns, cover_url, track_id, created_at, updated_at
+        )
+        VALUES (
+          ${session.id},
+          ${session.title},
+          ${session.topic},
+          ${session.category || 'debate'},
+          ${session.host_muse_id},
+          ${session.host_muse_name},
+          ${session.co_host_muse_id || null},
+          ${session.co_host_muse_name || null},
+          ${session.status},
+          ${session.current_turn_muse_id || null},
+          ${session.turn_count},
+          ${session.max_turns || 6},
+          ${JSON.stringify(session.turns)}::jsonb,
+          ${session.cover_url || null},
+          ${session.track_id || null},
+          ${session.created_at},
+          ${session.updated_at}
+        )
+      `;
+    } catch (e) {
+      console.warn('Neon createPodcastSession error:', e);
+    }
+  }
+
+  podcastSessionsStore.unshift(session);
+  return session;
+}
+
+export async function getPodcastSessionById(id: string): Promise<PodcastSession | null> {
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      const rows = (await sql`SELECT * FROM podcast_sessions WHERE id = ${id} LIMIT 1`) as any[];
+      if (Array.isArray(rows) && rows.length > 0) {
+        const r = rows[0];
+        return {
+          ...r,
+          turns: typeof r.turns === 'string' ? JSON.parse(r.turns) : (r.turns || []),
+        } as PodcastSession;
+      }
+    } catch (e) {
+      console.warn('Neon getPodcastSessionById error:', e);
+    }
+  }
+  return podcastSessionsStore.find((s) => s.id === id) || null;
+}
+
+export async function listPodcastSessions(filter?: {
+  status?: string;
+  my_turn_for?: string;
+  muse_id?: string;
+}): Promise<PodcastSession[]> {
+  const sql = getNeonSql();
+  if (sql) {
+    try {
+      let rows: any[] = [];
+      if (filter?.status) {
+        rows = (await sql`
+          SELECT * FROM podcast_sessions 
+          WHERE status = ${filter.status} 
+          ORDER BY updated_at DESC
+        `) as any[];
+      } else if (filter?.my_turn_for) {
+        rows = (await sql`
+          SELECT * FROM podcast_sessions 
+          WHERE current_turn_muse_id = ${filter.my_turn_for} AND status = 'in_progress'
+          ORDER BY updated_at DESC
+        `) as any[];
+      } else if (filter?.muse_id) {
+        rows = (await sql`
+          SELECT * FROM podcast_sessions 
+          WHERE host_muse_id = ${filter.muse_id} OR co_host_muse_id = ${filter.muse_id}
+          ORDER BY updated_at DESC
+        `) as any[];
+      } else {
+        rows = (await sql`
+          SELECT * FROM podcast_sessions 
+          ORDER BY updated_at DESC 
+          LIMIT 50
+        `) as any[];
+      }
+
+      if (Array.isArray(rows)) {
+        return rows.map((r) => ({
+          ...r,
+          turns: typeof r.turns === 'string' ? JSON.parse(r.turns) : (r.turns || []),
+        })) as PodcastSession[];
+      }
+    } catch (e) {
+      console.warn('Neon listPodcastSessions error:', e);
+    }
+  }
+
+  let list = [...podcastSessionsStore];
+  if (filter?.status) {
+    list = list.filter((s) => s.status === filter.status);
+  }
+  if (filter?.my_turn_for) {
+    list = list.filter((s) => s.current_turn_muse_id === filter.my_turn_for && s.status === 'in_progress');
+  }
+  if (filter?.muse_id) {
+    list = list.filter((s) => s.host_muse_id === filter.muse_id || s.co_host_muse_id === filter.muse_id);
+  }
+  return list;
+}
+
+export async function updatePodcastSession(
+  id: string,
+  updates: Partial<PodcastSession>
+): Promise<PodcastSession | null> {
+  const sql = getNeonSql();
+  const now = new Date().toISOString();
+
+  if (sql) {
+    try {
+      const rows = (await sql`
+        UPDATE podcast_sessions
+        SET
+          co_host_muse_id = COALESCE(${updates.co_host_muse_id ?? null}, co_host_muse_id),
+          co_host_muse_name = COALESCE(${updates.co_host_muse_name ?? null}, co_host_muse_name),
+          status = COALESCE(${updates.status ?? null}, status),
+          current_turn_muse_id = ${updates.current_turn_muse_id ?? null},
+          turn_count = COALESCE(${updates.turn_count ?? null}, turn_count),
+          turns = CASE WHEN ${updates.turns ? JSON.stringify(updates.turns) : null}::jsonb IS NOT NULL
+                       THEN ${JSON.stringify(updates.turns)}::jsonb ELSE turns END,
+          track_id = COALESCE(${updates.track_id ?? null}, track_id),
+          cover_url = COALESCE(${updates.cover_url ?? null}, cover_url),
+          updated_at = ${now}
+        WHERE id = ${id}
+        RETURNING *
+      `) as any[];
+
+      if (Array.isArray(rows) && rows.length > 0) {
+        const r = rows[0];
+        return {
+          ...r,
+          turns: typeof r.turns === 'string' ? JSON.parse(r.turns) : (r.turns || []),
+        } as PodcastSession;
+      }
+    } catch (e) {
+      console.warn('Neon updatePodcastSession error:', e);
+    }
+  }
+
+  const idx = podcastSessionsStore.findIndex((s) => s.id === id);
+  if (idx >= 0) {
+    podcastSessionsStore[idx] = {
+      ...podcastSessionsStore[idx],
+      ...updates,
+      updated_at: now,
+    };
+    return podcastSessionsStore[idx];
+  }
+  return null;
 }

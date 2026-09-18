@@ -97,7 +97,10 @@ export default function LovedTracksTable({
                     }}
                     className="text-[11px] text-[#8677A3] hover:text-[#D5C9FA] hover:underline transition-colors truncate"
                   >
-                    {track.muse_name}
+                    <span>{track.muse_name}</span>
+                    {track.co_host_muse_name && (
+                      <span className="text-[#5EEAD4] ml-1">× {track.co_host_muse_name}</span>
+                    )}
                   </div>
                 </div>
               </div>

@@ -22,7 +22,58 @@ export default function NowPlayingSidebar({
 }: NowPlayingSidebarProps) {
   const [activeTab, setActiveTab] = useState<'notes' | 'discussion'>('discussion');
 
-  const renderScript = (scriptText?: string) => {
+  const renderScript = (track?: Track | null) => {
+    if (!track) return null;
+    const scriptText = track.script || track.lyrics;
+    const turns = track.dialogue_turns;
+
+    if (turns && turns.length > 0) {
+      return (
+        <div className="space-y-3 py-1 select-text">
+          <div className="flex items-center justify-between pb-2 border-b border-[#2C1F42] text-[10px] font-mono text-[#A291FF]">
+            <span>💬 Dual-Muse Dialogue</span>
+            <span className="bg-[#2A1744] px-2 py-0.5 rounded-full border border-[#482875]">
+              {turns.length} Turns
+            </span>
+          </div>
+          {turns.map((turn, idx) => {
+            const isHost = turn.muse_id === track.muse_id || turn.muse_name === track.muse_name;
+            return (
+              <div
+                key={idx}
+                className={`p-3 rounded-xl border space-y-1.5 transition-all ${
+                  isHost
+                    ? 'bg-[#1C142A] border-[#38235C] mr-2'
+                    : 'bg-[#131D28] border-[#1F3E4D] ml-2'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                        isHost ? 'bg-[#7C3AED] text-white' : 'bg-[#0D9488] text-white'
+                      }`}
+                    >
+                      {turn.muse_name[0]?.toUpperCase()}
+                    </span>
+                    <span className={isHost ? 'text-[#D8B4FE]' : 'text-[#5EEAD4]'}>
+                      {turn.muse_name}
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-mono text-[#74668D]">
+                    Turn #{turn.turn_number || idx + 1}
+                  </span>
+                </div>
+                <p className="text-[#E2D9F3] text-xs leading-relaxed font-light">
+                  {turn.text}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
     if (!scriptText || !scriptText.trim()) {
       return (
         <div className="py-8 px-4 text-center space-y-2">
@@ -40,6 +91,54 @@ export default function NowPlayingSidebar({
     }
 
     const paragraphs = scriptText.split('\n').filter(p => p.trim().length > 0);
+    const hasDialogueSyntax = paragraphs.some(l => /^[A-Za-z0-9_\s]+:\s/.test(l));
+
+    if (hasDialogueSyntax) {
+      return (
+        <div className="space-y-3 py-1 select-text">
+          {paragraphs.map((line, idx) => {
+            const match = line.match(/^([A-Za-z0-9_\s]+):\s*(.*)$/);
+            if (match) {
+              const speaker = match[1].trim();
+              const speech = match[2].trim();
+              const isHost = !track.co_host_muse_name || speaker.toLowerCase() === track.muse_name.toLowerCase();
+              return (
+                <div
+                  key={idx}
+                  className={`p-3 rounded-xl border space-y-1.5 ${
+                    isHost
+                      ? 'bg-[#1C142A] border-[#38235C] mr-2'
+                      : 'bg-[#131D28] border-[#1F3E4D] ml-2'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <span
+                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                          isHost ? 'bg-[#7C3AED] text-white' : 'bg-[#0D9488] text-white'
+                        }`}
+                      >
+                        {speaker[0]?.toUpperCase()}
+                      </span>
+                      <span className={isHost ? 'text-[#D8B4FE]' : 'text-[#5EEAD4]'}>
+                        {speaker}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-[#E2D9F3] text-xs leading-relaxed font-light">{speech}</p>
+                </div>
+              );
+            }
+            return (
+              <p key={idx} className="text-[#D6CBE8] text-xs font-light leading-relaxed">
+                {line}
+              </p>
+            );
+          })}
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-2.5 text-xs leading-relaxed select-text py-1">
         {paragraphs.map((p, idx) => (
@@ -120,13 +219,24 @@ export default function NowPlayingSidebar({
                 <h3 className="text-sm font-semibold text-[#FFFFFF] truncate tracking-tight">
                   {currentTrack.title}
                 </h3>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
                   <span
                     onClick={() => onSelectMuse(currentTrack.muse_id)}
                     className="text-xs text-[#A89CBF] hover:text-[#D5CAF8] cursor-pointer hover:underline truncate"
                   >
                     {currentTrack.muse_name}
                   </span>
+                  {currentTrack.co_host_muse_name && (
+                    <>
+                      <span className="text-[10px] text-[#C084FC] font-semibold">×</span>
+                      <span
+                        onClick={() => currentTrack.co_host_muse_id && onSelectMuse(currentTrack.co_host_muse_id)}
+                        className="text-xs text-[#5EEAD4] hover:text-[#99F6E4] cursor-pointer hover:underline truncate"
+                      >
+                        {currentTrack.co_host_muse_name}
+                      </span>
+                    </>
+                  )}
                   <span className="text-[10px] font-mono text-[#8C7DA9] bg-[#1B1429] px-2 py-0.5 rounded-full border border-[#33234F] truncate max-w-[120px]">
                     {currentTrack.channel}
                   </span>
@@ -222,7 +332,7 @@ export default function NowPlayingSidebar({
         {/* Tab 1: Script & Show Notes */}
         {activeTab === 'notes' && (
           <div className="rounded-2xl bg-[#191325] border border-[#2B1D3E] p-4 max-h-80 overflow-y-auto custom-scrollbar">
-            {renderScript(currentTrack?.script || currentTrack?.lyrics)}
+            {renderScript(currentTrack)}
           </div>
         )}
 

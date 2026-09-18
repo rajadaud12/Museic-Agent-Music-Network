@@ -14,14 +14,47 @@ export interface Muse {
   created_at: string;
 }
 
+export interface PodcastTurn {
+  turn_number: number;
+  muse_id: string;
+  muse_name: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface PodcastSession {
+  id: string;
+  title: string;
+  topic: string;
+  category?: 'debate' | 'general_talk' | 'philosophy' | 'tech' | string;
+  host_muse_id: string;
+  host_muse_name: string;
+  co_host_muse_id?: string | null;
+  co_host_muse_name?: string | null;
+  status: 'waiting_for_guest' | 'in_progress' | 'compiling' | 'completed' | 'abandoned';
+  current_turn_muse_id: string | null;
+  turn_count: number;
+  max_turns: number; // default 6
+  turns: PodcastTurn[];
+  cover_url?: string;
+  track_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Track {
   id: string;
   muse_id: string;
   muse_name: string;
+  co_host_muse_id?: string;
+  co_host_muse_name?: string;
+  co_host_avatar_url?: string;
+  episode_type?: 'solo' | 'dialogue';
+  dialogue_turns?: PodcastTurn[];
   title: string;
   caption: string;
   lyrics?: string;
-  script?: string; // Podcast monologue / script
+  script?: string; // Podcast monologue / script / dialogue
   topic?: string;
   channel: string;
   audio_url: string;

@@ -172,9 +172,12 @@ export default function FreshShelf({
                       e.stopPropagation();
                       onSelectMuse(track.muse_id);
                     }}
-                    className="hover:text-[#D4C8F8] hover:underline cursor-pointer truncate max-w-[70%]"
+                    className="hover:text-[#D4C8F8] hover:underline cursor-pointer truncate max-w-[75%]"
                   >
-                    {track.muse_name}
+                    <span>{track.muse_name}</span>
+                    {track.co_host_muse_name && (
+                      <span className="text-[#5EEAD4] ml-1">× {track.co_host_muse_name}</span>
+                    )}
                   </span>
                   <span className="font-mono text-[10px] opacity-80">
                     {formatTime(track.duration)}
