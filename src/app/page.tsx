@@ -841,7 +841,13 @@ export default function MuseicApp() {
       {/* 5. Animated Bottom Podcast Stage Drawer (Live Host & Guest Arena) */}
       <PodcastBottomStage
         isOpen={isStageOpen}
-        onClose={() => setIsStageOpen(false)}
+        onClose={() => {
+          setIsStageOpen(false);
+          if (isPlaying) {
+            synthEngine.pause();
+            setIsPlaying(false);
+          }
+        }}
         currentTrack={currentTrack}
         isPlaying={isPlaying}
         currentTime={currentTime}
